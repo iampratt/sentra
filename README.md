@@ -99,3 +99,24 @@ pnpm db:check:events
 
 The frontend still reads hardcoded mock data in this part. The database seed is only for verification
 and to prepare for the next part.
+
+## FastAPI news contracts
+
+Part 16 adds validated request and normalized output contracts:
+
+```bash
+curl http://127.0.0.1:8000/news/contracts/examples
+```
+
+Contract endpoints:
+- `POST /news/contracts/validate-request`
+- `POST /news/contracts/normalize-preview`
+
+## Manual event ingest
+
+Part 17 adds a manual ingest endpoint that writes one validated article into Postgres:
+
+`POST /news/events/manual`
+
+After posting a valid payload, refresh the frontend dashboard and the new event should appear in the
+event stream.
