@@ -116,8 +116,36 @@ a {
   overflow-wrap: anywhere;
 }
 
+.control-pill-toggle {
+  min-width: 190px;
+}
+
 .control-pill-status {
   min-width: 220px;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle-chip {
+  border: 1px solid rgba(151, 223, 255, 0.12);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(9, 19, 24, 0.72);
+  color: var(--muted);
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toggle-chip-active {
+  color: var(--text);
+  border-color: rgba(151, 223, 255, 0.34);
+  background: rgba(24, 50, 65, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(142, 233, 255, 0.08);
 }
 
 .telemetry-strip {
@@ -445,6 +473,24 @@ h2 {
 .globe-wrap canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+.flat-map-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  padding: 34px;
+}
+
+.flat-map-wrap svg {
+  width: 100%;
+  height: 100%;
+}
+
+.flat-marker {
+  cursor: pointer;
 }
 
 .map-grid {

@@ -1,12 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps";
+import { feature } from "topojson-client";
+import worldAtlas from "world-atlas/countries-110m.json";
 
 type IntelDashboardProps = {
   appName: string;
   apiBaseUrl: string;
 };
+
+type MapMode = "globe" | "flat";
 
 type MockEvent = {
   id: string;
@@ -102,7 +107,9 @@ type GlobeViewport = {
 
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [selectedEventId, setSelectedEventId] = useState<string>(mockEvents[0]?.id ?? "");
+  const [mapMode, setMapMode] = useState<MapMode>("globe");
   const globeContainerRef = useRef<HTMLDivElement | null>(null);
+  const globeRef = useRef<any>(null);
   const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
     width: 900,
     height: 720,
@@ -116,6 +123,10 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     size: event.severity === "High" ? 0.35 : 0.24,
     color: event.severity === "High" ? "#ff8a8a" : event.severity === "Medium" ? "#ffd07a" : "#8ee9ff",
   }));
+  const worldFeatures = useMemo(() => {
+    const geo = feature(worldAtlas as any, (worldAtlas as any).objects.countries) as any;
+    return geo.features ?? [];
+  }, []);
 
   useEffect(() => {
     const element = globeContainerRef.current;
@@ -150,6 +161,21 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const globeInstance = globeRef.current;
+
+    if (!globeInstance?.globeMaterial) {
+      return;
+    }
+
+    const material = globeInstance.globeMaterial();
+
+    material.color.set("#17384b");
+    material.emissive.set("#0a1820");
+    material.emissiveIntensity = 0.28;
+    material.shininess = 0.9;
+  }, [globeViewport.width, globeViewport.height]);
+
   return (
     <main className="intel-shell">
       <section className="intel-stage" aria-label="Map-first intelligence shell">
@@ -163,6 +189,25 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             <div className="control-pill">
               <span className="control-label">View</span>
               <strong>Global</strong>
+            </div>
+            <div className="control-pill control-pill-toggle">
+              <span className="control-label">Map Mode</span>
+              <div className="toggle-row" role="tablist" aria-label="Map mode">
+                <button
+                  type="button"
+                  className={`toggle-chip${mapMode === "globe" ? " toggle-chip-active" : ""}`}
+                  onClick={() => setMapMode("globe")}
+                >
+                  Globe
+                </button>
+                <button
+                  type="button"
+                  className={`toggle-chip${mapMode === "flat" ? " toggle-chip-active" : ""}`}
+                  onClick={() => setMapMode("flat")}
+                >
+                  2D
+                </button>
+              </div>
             </div>
             <div className="control-pill">
               <span className="control-label">Time Range</span>
@@ -261,33 +306,87 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             </div>
           </aside>
 
-          <section className="map-surface" aria-label="Globe map">
+          <section className="map-surface" aria-label={mapMode === "globe" ? "Globe map" : "2D map"}>
             <div className="map-grid" aria-hidden="true" />
             <div className="orbital orbital-1" />
             <div className="orbital orbital-2" />
             <div className="map-glow" />
             <div className="crosshair crosshair-x" />
             <div className="crosshair crosshair-y" />
-            <div ref={globeContainerRef} className="globe-wrap">
-              <Globe
-                backgroundColor="rgba(0,0,0,0)"
-                globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
-                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-                showAtmosphere
-                atmosphereColor="#79dfff"
-                atmosphereAltitude={0.16}
-                pointsData={globePoints}
-                pointLat="lat"
-                pointLng="lng"
-                pointAltitude="size"
-                pointRadius={0.36}
-                pointColor="color"
-                pointResolution={16}
-                onPointClick={(point) => setSelectedEventId((point as MockEvent).id)}
-                width={globeViewport.width}
-                height={globeViewport.height}
-              />
-            </div>
+            {mapMode === "globe" ? (
+              <div ref={globeContainerRef} className="globe-wrap">
+                <Globe
+                  ref={globeRef}
+                  backgroundColor="rgba(0,0,0,0)"
+                  showGlobe
+                  showAtmosphere
+                  atmosphereColor="#79dfff"
+                  atmosphereAltitude={0.16}
+                  pointsData={globePoints}
+                  pointLat="lat"
+                  pointLng="lng"
+                  pointAltitude="size"
+                  pointRadius={0.36}
+                  pointColor="color"
+                  pointResolution={16}
+                  onPointClick={(point) => setSelectedEventId((point as MockEvent).id)}
+                  width={globeViewport.width}
+                  height={globeViewport.height}
+                />
+              </div>
+            ) : (
+              <div className="flat-map-wrap">
+                <ComposableMap
+                  projection="geoEqualEarth"
+                  projectionConfig={{ scale: 175 }}
+                  width={globeViewport.width}
+                  height={globeViewport.height}
+                  style={{ width: "100%", height: "100%" }}
+                >
+                  <Geographies geography={worldFeatures}>
+                    {({ geographies }) =>
+                      geographies.map((geo) => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill="#163547"
+                          stroke="#2f5b73"
+                          strokeWidth={0.45}
+                          style={{
+                            default: { outline: "none" },
+                            hover: { outline: "none", fill: "#1e4359" },
+                            pressed: { outline: "none" },
+                          }}
+                        />
+                      ))
+                    }
+                  </Geographies>
+                  {mockEvents.map((event) => (
+                    <Marker
+                      key={event.id}
+                      coordinates={[event.lng, event.lat]}
+                      onClick={() => setSelectedEventId(event.id)}
+                    >
+                      <g className="flat-marker">
+                        <circle
+                          r={event.id === selectedEvent?.id ? 8 : 6}
+                          fill={
+                            event.severity === "High"
+                              ? "#ff8a8a"
+                              : event.severity === "Medium"
+                                ? "#ffd07a"
+                                : "#8ee9ff"
+                          }
+                          stroke="#041017"
+                          strokeWidth={1.8}
+                        />
+                        <circle r={event.id === selectedEvent?.id ? 14 : 11} fill="rgba(142, 233, 255, 0.12)" />
+                      </g>
+                    </Marker>
+                  ))}
+                </ComposableMap>
+              </div>
+            )}
 
             <div className="map-meta map-meta-top-left">
               <span>Lat {selectedEvent?.lat.toFixed(4) ?? "20.0000"}</span>
@@ -328,8 +427,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <p className="section-label">Primary Surface</p>
               <h2>Global Intelligence Map</h2>
               <p>
-                Static event markers are live on the globe. Marker clicks now work; tighter
-                synchronization and richer overlays continue in the next part.
+                {mapMode === "globe"
+                  ? "Colored event markers are live on the globe. Marker clicks work and the surface no longer depends on remote textures."
+                  : "The flat map uses the same event state and marker clicks, giving you a compact 2D intelligence view alongside the globe."}
               </p>
             </div>
           </section>
