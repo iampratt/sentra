@@ -1,0 +1,11 @@
+fastapi==0.115.12
+uvicorn[standard]==0.34.0
+pydantic-settings==2.8.1
+httpx==0.28.1
+feedparser==6.0.11
+yfinance==0.2.54
+qdrant-client==1.13.3
+langchain==0.3.21
+langchain-groq==0.2.5
+sentence-transformers==3.4.1
+python-dotenv==1.0.1
