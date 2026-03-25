@@ -28,6 +28,7 @@
     "@types/react-dom": "^19.0.4",
     "@types/react-simple-maps": "^3.0.6",
     "@types/topojson-client": "^3.1.5",
+    "dotenv": "^17.3.1",
     "eslint": "^9.22.0",
     "eslint-config-next": "^15.2.4",
     "tsx": "^4.20.3",
