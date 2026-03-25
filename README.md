@@ -87,3 +87,15 @@ This creates the Part 13 tables:
 - `companies`
 - `symbols`
 - `event_symbol_impacts`
+
+## Seed mock events
+
+Part 14 adds a seed path that inserts the current mock dashboard events into Postgres:
+
+```bash
+pnpm db:seed:events
+pnpm db:check:events
+```
+
+The frontend still reads hardcoded mock data in this part. The database seed is only for verification
+and to prepare for the next part.
