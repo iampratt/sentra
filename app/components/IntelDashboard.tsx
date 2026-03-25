@@ -12,6 +12,7 @@ type IntelDashboardProps = {
 };
 
 type MapMode = "globe" | "flat";
+type FilterValue = "All" | string;
 
 type MockEvent = {
   id: string;
@@ -23,6 +24,7 @@ type MockEvent = {
   lng: number;
   publishedAt: string;
   severity: "Low" | "Medium" | "High";
+  sentiment: "Bearish" | "Neutral" | "Bullish";
   category: string;
   watchlist: string[];
   impactWindow: string;
@@ -48,6 +50,7 @@ const mockEvents: MockEvent[] = [
     lng: 33.8116,
     publishedAt: "2026-03-25 08:20 UTC",
     severity: "High",
+    sentiment: "Bearish",
     category: "Shipping",
     watchlist: ["Energy", "Logistics", "Insurers"],
     impactWindow: "24h",
@@ -64,6 +67,7 @@ const mockEvents: MockEvent[] = [
     lng: 126.978,
     publishedAt: "2026-03-25 07:10 UTC",
     severity: "Medium",
+    sentiment: "Neutral",
     category: "Semiconductors",
     watchlist: ["Chipmakers", "Tooling", "Electronics"],
     impactWindow: "2-5d",
@@ -80,6 +84,7 @@ const mockEvents: MockEvent[] = [
     lng: 13.405,
     publishedAt: "2026-03-25 05:45 UTC",
     severity: "Medium",
+    sentiment: "Bullish",
     category: "Energy",
     watchlist: ["Utilities", "Chemicals", "Industrials"],
     impactWindow: "1-3d",
@@ -96,6 +101,7 @@ const mockEvents: MockEvent[] = [
     lng: -70.6693,
     publishedAt: "2026-03-24 23:50 UTC",
     severity: "High",
+    sentiment: "Bullish",
     category: "Metals",
     watchlist: ["Copper", "Miners", "Manufacturers"],
     impactWindow: "3-7d",
@@ -139,6 +145,9 @@ type GlobeViewport = {
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [selectedEventId, setSelectedEventId] = useState<string>(mockEvents[0]?.id ?? "");
   const [mapMode, setMapMode] = useState<MapMode>("globe");
+  const [regionFilter, setRegionFilter] = useState<FilterValue>("All");
+  const [sentimentFilter, setSentimentFilter] = useState<FilterValue>("All");
+  const [sourceFilter, setSourceFilter] = useState<FilterValue>("All");
   const globeContainerRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<any>(null);
   const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
@@ -146,11 +155,30 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     height: 720,
   });
 
+  const regionOptions = useMemo(() => ["All", ...new Set(mockEvents.map((event) => event.region))], []);
+  const sentimentOptions = useMemo(
+    () => ["All", ...new Set(mockEvents.map((event) => event.sentiment))],
+    [],
+  );
+  const sourceOptions = useMemo(() => ["All", ...new Set(mockEvents.map((event) => event.source))], []);
+
+  const filteredEvents = useMemo(
+    () =>
+      mockEvents.filter((event) => {
+        const regionMatch = regionFilter === "All" || event.region === regionFilter;
+        const sentimentMatch = sentimentFilter === "All" || event.sentiment === sentimentFilter;
+        const sourceMatch = sourceFilter === "All" || event.source === sourceFilter;
+
+        return regionMatch && sentimentMatch && sourceMatch;
+      }),
+    [regionFilter, sentimentFilter, sourceFilter],
+  );
+
   const selectedEvent =
-    mockEvents.find((event) => event.id === selectedEventId) ?? mockEvents[0] ?? null;
+    filteredEvents.find((event) => event.id === selectedEventId) ?? filteredEvents[0] ?? null;
   const selectedStockImpacts = selectedEvent ? mockStockImpacts[selectedEvent.id] ?? [] : [];
-  const highSeverityCount = mockEvents.filter((event) => event.severity === "High").length;
-  const globePoints = mockEvents.map((event) => ({
+  const highSeverityCount = filteredEvents.filter((event) => event.severity === "High").length;
+  const globePoints = filteredEvents.map((event) => ({
     ...event,
     size:
       event.id === selectedEvent?.id
@@ -231,12 +259,26 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     );
   }, [mapMode, selectedEvent]);
 
+  useEffect(() => {
+    if (selectedEvent || filteredEvents.length === 0) {
+      return;
+    }
+
+    setSelectedEventId(filteredEvents[0].id);
+  }, [filteredEvents, selectedEvent]);
+
+  const resetFilters = () => {
+    setRegionFilter("All");
+    setSentimentFilter("All");
+    setSourceFilter("All");
+  };
+
   return (
     <main className="intel-shell">
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 10: Mock Stock Impact Panel</p>
+            <p className="kicker">Part 11: Frontend Filters</p>
             <h1>{appName}</h1>
           </div>
 
@@ -282,7 +324,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
         <section className="telemetry-strip" aria-label="Static dashboard telemetry">
           <div className="telemetry-card">
             <span>Tracked Events</span>
-            <strong>{mockEvents.length}</strong>
+            <strong>{filteredEvents.length}</strong>
           </div>
           <div className="telemetry-card">
             <span>High Severity</span>
@@ -306,6 +348,42 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
           </div>
         </section>
 
+        <section className="filter-strip" aria-label="Event filters">
+          <label className="filter-card">
+            <span>Region</span>
+            <select value={regionFilter} onChange={(event) => setRegionFilter(event.target.value)}>
+              {regionOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-card">
+            <span>Sentiment</span>
+            <select value={sentimentFilter} onChange={(event) => setSentimentFilter(event.target.value)}>
+              {sentimentOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-card">
+            <span>Source</span>
+            <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value)}>
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="filter-reset" onClick={resetFilters}>
+            Reset Filters
+          </button>
+        </section>
+
         <div className="map-frame">
           <aside className="drawer drawer-left">
             <div className="drawer-head">
@@ -313,7 +391,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                 <p className="section-label">Event Stream</p>
                 <h2>Live Developments</h2>
               </div>
-              <span className="status-badge">{mockEvents.length} Events</span>
+              <span className="status-badge">{filteredEvents.length} Events</span>
             </div>
 
             <div className="drawer-toolbar">
@@ -323,7 +401,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             </div>
 
             <div className="event-list" role="list" aria-label="Mock news events">
-              {mockEvents.map((event) => {
+              {filteredEvents.map((event) => {
                 const isActive = event.id === selectedEvent?.id;
 
                 return (
@@ -358,6 +436,12 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   </button>
                 );
               })}
+              {filteredEvents.length === 0 ? (
+                <div className="empty-filter-state">
+                  <strong>No events match the current filters.</strong>
+                  <span>Adjust the filters or reset them to restore the full mock stream.</span>
+                </div>
+              ) : null}
             </div>
           </aside>
 
@@ -438,7 +522,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       ))
                     }
                   </Geographies>
-                  {mockEvents.map((event) => (
+                  {filteredEvents.map((event) => (
                     <Marker
                       key={event.id}
                       coordinates={[event.lng, event.lat]}
