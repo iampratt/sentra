@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from api.config import get_settings
+from api.news import router as news_contracts_router
 
 settings = get_settings()
 
@@ -9,6 +10,8 @@ app = FastAPI(
     version="0.1.0",
     description="Backend service for news ingestion, analysis, and stock impact workflows.",
 )
+
+app.include_router(news_contracts_router)
 
 
 @app.get("/health")
