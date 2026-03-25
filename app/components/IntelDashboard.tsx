@@ -322,6 +322,12 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   showAtmosphere
                   atmosphereColor="#79dfff"
                   atmosphereAltitude={0.16}
+                  polygonsData={worldFeatures}
+                  polygonAltitude={0.01}
+                  polygonCapColor={() => "rgba(44, 98, 122, 0.92)"}
+                  polygonSideColor={() => "rgba(16, 43, 56, 0.88)"}
+                  polygonStrokeColor={() => "rgba(132, 221, 255, 0.28)"}
+                  polygonsTransitionDuration={300}
                   pointsData={globePoints}
                   pointLat="lat"
                   pointLng="lng"
