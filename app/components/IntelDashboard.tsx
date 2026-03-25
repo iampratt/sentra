@@ -15,6 +15,9 @@ type MockEvent = {
   country: string;
   publishedAt: string;
   severity: "Low" | "Medium" | "High";
+  category: string;
+  watchlist: string[];
+  impactWindow: string;
   summary: string;
 };
 
@@ -27,6 +30,9 @@ const mockEvents: MockEvent[] = [
     country: "Egypt",
     publishedAt: "2026-03-25 08:20 UTC",
     severity: "High",
+    category: "Shipping",
+    watchlist: ["Energy", "Logistics", "Insurers"],
+    impactWindow: "24h",
     summary:
       "Shipping disruptions around the Red Sea are raising freight and insurance expectations, increasing watchlist pressure on logistics, energy, and import-dependent equities.",
   },
@@ -38,6 +44,9 @@ const mockEvents: MockEvent[] = [
     country: "South Korea",
     publishedAt: "2026-03-25 07:10 UTC",
     severity: "Medium",
+    category: "Semiconductors",
+    watchlist: ["Chipmakers", "Tooling", "Electronics"],
+    impactWindow: "2-5d",
     summary:
       "A policy review on advanced semiconductor tooling is adding uncertainty for suppliers and downstream electronics names with exposure to fabrication expansion.",
   },
@@ -49,6 +58,9 @@ const mockEvents: MockEvent[] = [
     country: "Germany",
     publishedAt: "2026-03-25 05:45 UTC",
     severity: "Medium",
+    category: "Energy",
+    watchlist: ["Utilities", "Chemicals", "Industrials"],
+    impactWindow: "1-3d",
     summary:
       "Short-duration infrastructure maintenance has shifted regional energy pricing expectations and may influence utilities, chemicals, and heavy manufacturing sentiment.",
   },
@@ -60,6 +72,9 @@ const mockEvents: MockEvent[] = [
     country: "Chile",
     publishedAt: "2026-03-24 23:50 UTC",
     severity: "High",
+    category: "Metals",
+    watchlist: ["Copper", "Miners", "Manufacturers"],
+    impactWindow: "3-7d",
     summary:
       "Labor talks at a major copper operation have stalled, raising the probability of supply disruption and putting metals, miners, and industrial buyers on alert.",
   },
@@ -70,6 +85,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
   const selectedEvent =
     mockEvents.find((event) => event.id === selectedEventId) ?? mockEvents[0] ?? null;
+  const highSeverityCount = mockEvents.filter((event) => event.severity === "High").length;
 
   return (
     <main className="intel-shell">
@@ -100,6 +116,33 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
           </nav>
         </header>
 
+        <section className="telemetry-strip" aria-label="Static dashboard telemetry">
+          <div className="telemetry-card">
+            <span>Tracked Events</span>
+            <strong>{mockEvents.length}</strong>
+          </div>
+          <div className="telemetry-card">
+            <span>High Severity</span>
+            <strong>{highSeverityCount}</strong>
+          </div>
+          <div className="telemetry-card">
+            <span>Regions Active</span>
+            <strong>4</strong>
+          </div>
+          <div className="telemetry-card">
+            <span>Refresh Mode</span>
+            <strong>Manual</strong>
+          </div>
+          <div className="telemetry-card">
+            <span>Model State</span>
+            <strong>Mock Feed</strong>
+          </div>
+          <div className="telemetry-card">
+            <span>Signal Queue</span>
+            <strong>Standby</strong>
+          </div>
+        </section>
+
         <div className="map-frame">
           <aside className="drawer drawer-left">
             <div className="drawer-head">
@@ -108,6 +151,12 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                 <h2>Live Developments</h2>
               </div>
               <span className="status-badge">{mockEvents.length} Events</span>
+            </div>
+
+            <div className="drawer-toolbar">
+              <span className="toolbar-chip toolbar-chip-active">All Regions</span>
+              <span className="toolbar-chip">High Impact</span>
+              <span className="toolbar-chip">Macro</span>
             </div>
 
             <div className="event-list" role="list" aria-label="Mock news events">
@@ -121,16 +170,28 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                     className={`event-card${isActive ? " event-card-active" : ""}`}
                     onClick={() => setSelectedEventId(event.id)}
                   >
-                    <span className={`severity-chip severity-${event.severity.toLowerCase()}`}>
-                      {event.severity}
-                    </span>
+                    <div className="event-card-head">
+                      <span className={`severity-chip severity-${event.severity.toLowerCase()}`}>
+                        {event.severity}
+                      </span>
+                      <span className="event-category">{event.category}</span>
+                      <span className="event-window">{event.impactWindow}</span>
+                    </div>
                     <strong>{event.title}</strong>
-                    <span className="event-meta">
-                      {event.region} · {event.country}
-                    </span>
-                    <span className="event-meta">
-                      {event.source} · {event.publishedAt}
-                    </span>
+                    <div className="event-meta-row">
+                      <span className="event-meta">
+                        {event.region} · {event.country}
+                      </span>
+                      <span className="event-meta">{event.publishedAt}</span>
+                    </div>
+                    <span className="event-meta">{event.source}</span>
+                    <div className="tag-row" aria-label="Watchlist sectors">
+                      {event.watchlist.map((tag) => (
+                        <span key={tag} className="tag-pill">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
                   </button>
                 );
               })}
@@ -159,6 +220,26 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             <div className="map-meta map-meta-bottom-right">
               <span>{selectedEvent?.country ?? "No event selected"}</span>
             </div>
+            <div className="map-stack map-stack-left">
+              <div className="stack-card">
+                <span>Focus Region</span>
+                <strong>{selectedEvent?.region ?? "Global"}</strong>
+              </div>
+              <div className="stack-card">
+                <span>Selected Sector</span>
+                <strong>{selectedEvent?.category ?? "None"}</strong>
+              </div>
+            </div>
+            <div className="map-stack map-stack-right">
+              <div className="stack-card">
+                <span>Impact Window</span>
+                <strong>{selectedEvent?.impactWindow ?? "N/A"}</strong>
+              </div>
+              <div className="stack-card">
+                <span>Watchlist Count</span>
+                <strong>{selectedEvent?.watchlist.length ?? 0}</strong>
+              </div>
+            </div>
 
             <div className="center-plate">
               <p className="section-label">Primary Surface</p>
@@ -185,6 +266,13 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   <p className="detail-label">Headline</p>
                   <h3>{selectedEvent.title}</h3>
                 </div>
+                <div className="tag-row tag-row-detail">
+                  <span className={`severity-chip severity-${selectedEvent.severity.toLowerCase()}`}>
+                    {selectedEvent.severity}
+                  </span>
+                  <span className="tag-pill">{selectedEvent.category}</span>
+                  <span className="tag-pill">{selectedEvent.impactWindow} window</span>
+                </div>
                 <div className="detail-grid">
                   <div className="detail-stat">
                     <span>Source</span>
@@ -204,8 +292,32 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   </div>
                 </div>
                 <div className="detail-block">
+                  <p className="detail-label">Watchlist Exposure</p>
+                  <div className="tag-row">
+                    {selectedEvent.watchlist.map((tag) => (
+                      <span key={tag} className="tag-pill">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="detail-block">
                   <p className="detail-label">Summary</p>
                   <p className="drawer-copy detail-copy">{selectedEvent.summary}</p>
+                </div>
+                <div className="signal-grid">
+                  <div className="signal-card">
+                    <span>Signal Bias</span>
+                    <strong>{selectedEvent.severity === "High" ? "Escalating" : "Monitoring"}</strong>
+                  </div>
+                  <div className="signal-card">
+                    <span>Correlation</span>
+                    <strong>Pending</strong>
+                  </div>
+                  <div className="signal-card">
+                    <span>Linked Symbols</span>
+                    <strong>Not wired</strong>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -222,10 +334,24 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             <p className="section-label">Alert Ribbon</p>
             <span className="status-badge">Quiet</span>
           </div>
-          <p>
-            No active alerts yet. This strip will surface urgent developments after impact logic is
-            connected in later parts.
-          </p>
+          <div className="alert-grid">
+            <div className="alert-item">
+              <span>Priority Queue</span>
+              <strong>No live escalations</strong>
+            </div>
+            <div className="alert-item">
+              <span>Selected Region</span>
+              <strong>{selectedEvent?.region ?? "Global"}</strong>
+            </div>
+            <div className="alert-item">
+              <span>Next Layer</span>
+              <strong>Markers + Globe</strong>
+            </div>
+            <div className="alert-item">
+              <span>Status</span>
+              <strong>Awaiting Part 7</strong>
+            </div>
+          </div>
         </footer>
       </section>
     </main>
