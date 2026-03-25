@@ -306,11 +306,20 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             </div>
           </aside>
 
-          <section className="map-surface" aria-label={mapMode === "globe" ? "Globe map" : "2D map"}>
-            <div className="map-grid" aria-hidden="true" />
-            <div className="orbital orbital-1" />
-            <div className="orbital orbital-2" />
-            <div className="map-glow" />
+          <section
+            className={`map-surface${mapMode === "flat" ? " map-surface-flat" : ""}`}
+            aria-label={mapMode === "globe" ? "Globe map" : "2D map"}
+          >
+            <div className={`map-grid${mapMode === "flat" ? " map-grid-flat" : ""}`} aria-hidden="true" />
+            {mapMode === "globe" ? (
+              <>
+                <div className="orbital orbital-1" />
+                <div className="orbital orbital-2" />
+                <div className="map-glow" />
+              </>
+            ) : (
+              <div className="flat-wash" aria-hidden="true" />
+            )}
             <div className="crosshair crosshair-x" />
             <div className="crosshair crosshair-y" />
             {mapMode === "globe" ? (
@@ -355,12 +364,12 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                         <Geography
                           key={geo.rsmKey}
                           geography={geo}
-                          fill="#163547"
-                          stroke="#2f5b73"
-                          strokeWidth={0.45}
+                          fill="#1c465c"
+                          stroke="#5fa4c7"
+                          strokeWidth={0.38}
                           style={{
                             default: { outline: "none" },
-                            hover: { outline: "none", fill: "#1e4359" },
+                            hover: { outline: "none", fill: "#255873" },
                             pressed: { outline: "none" },
                           }}
                         />

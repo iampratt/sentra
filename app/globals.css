@@ -462,6 +462,15 @@ h2 {
     0 30px 60px var(--shadow);
 }
 
+.map-surface-flat {
+  background:
+    linear-gradient(180deg, rgba(20, 52, 68, 0.92), rgba(8, 22, 30, 0.98)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+  box-shadow:
+    inset 0 0 80px rgba(90, 173, 205, 0.05),
+    0 30px 60px var(--shadow);
+}
+
 .globe-wrap {
   position: absolute;
   inset: 0;
@@ -481,7 +490,7 @@ h2 {
   z-index: 0;
   display: grid;
   place-items: center;
-  padding: 34px;
+  padding: 24px 26px 30px;
 }
 
 .flat-map-wrap svg {
@@ -493,6 +502,15 @@ h2 {
   cursor: pointer;
 }
 
+.flat-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(122, 210, 240, 0.07), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 26%);
+}
+
 .map-grid {
   position: absolute;
   inset: 0;
@@ -501,6 +519,12 @@ h2 {
     linear-gradient(90deg, rgba(151, 223, 255, 0.08) 1px, transparent 1px);
   background-size: 64px 64px;
   mask-image: radial-gradient(circle at center, black 48%, transparent 92%);
+}
+
+.map-grid-flat {
+  opacity: 0.45;
+  background-size: 72px 72px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 96%);
 }
 
 .orbital,
