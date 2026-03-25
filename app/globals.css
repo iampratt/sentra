@@ -162,6 +162,33 @@ a {
   margin-bottom: 10px;
 }
 
+.events-warning {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(255, 188, 118, 0.28);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 188, 118, 0.08), transparent 55%),
+    rgba(27, 18, 10, 0.78);
+  color: #ffe5c4;
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.events-warning strong {
+  color: #fff4df;
+  font-size: 0.88rem;
+}
+
+.events-warning span {
+  color: rgba(255, 234, 204, 0.82);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
 .filter-card,
 .filter-reset {
   border: 1px solid rgba(151, 223, 255, 0.12);

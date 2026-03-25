@@ -26,6 +26,8 @@ type GlobeViewport = {
 };
 
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
+  const [events, setEvents] = useState<MockEvent[]>(mockEvents);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string>(mockEvents[0]?.id ?? "");
   const [mapMode, setMapMode] = useState<MapMode>("globe");
   const [regionFilter, setRegionFilter] = useState<FilterValue>("All");
@@ -38,23 +40,58 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     height: 720,
   });
 
-  const regionOptions = useMemo(() => ["All", ...new Set(mockEvents.map((event) => event.region))], []);
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadEvents() {
+      try {
+        const response = await fetch("/api/events", { cache: "no-store" });
+        const payload = (await response.json()) as
+          | { ok: true; events: MockEvent[] }
+          | { ok: false; error: string };
+
+        if (!response.ok || !payload.ok) {
+          throw new Error("error" in payload ? payload.error : "Failed to load events.");
+        }
+
+        if (!cancelled) {
+          setEvents(payload.events);
+          setEventsError(null);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load events.";
+
+        if (!cancelled) {
+          setEventsError(message);
+          setEvents(mockEvents);
+        }
+      }
+    }
+
+    void loadEvents();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const regionOptions = useMemo(() => ["All", ...new Set(events.map((event) => event.region))], [events]);
   const sentimentOptions = useMemo(
-    () => ["All", ...new Set(mockEvents.map((event) => event.sentiment))],
-    [],
+    () => ["All", ...new Set(events.map((event) => event.sentiment))],
+    [events],
   );
-  const sourceOptions = useMemo(() => ["All", ...new Set(mockEvents.map((event) => event.source))], []);
+  const sourceOptions = useMemo(() => ["All", ...new Set(events.map((event) => event.source))], [events]);
 
   const filteredEvents = useMemo(
     () =>
-      mockEvents.filter((event) => {
+      events.filter((event) => {
         const regionMatch = regionFilter === "All" || event.region === regionFilter;
         const sentimentMatch = sentimentFilter === "All" || event.sentiment === sentimentFilter;
         const sourceMatch = sourceFilter === "All" || event.source === sourceFilter;
 
         return regionMatch && sentimentMatch && sourceMatch;
       }),
-    [regionFilter, sentimentFilter, sourceFilter],
+    [events, regionFilter, sentimentFilter, sourceFilter],
   );
 
   const selectedEvent =
@@ -161,7 +198,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 11: Frontend Filters</p>
+            <p className="kicker">Part 15: DB-backed Event Feed</p>
             <h1>{appName}</h1>
           </div>
 
@@ -223,13 +260,21 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
           </div>
           <div className="telemetry-card">
             <span>Model State</span>
-            <strong>Mock Feed</strong>
+            <strong>{eventsError ? "DB Fallback" : "DB Feed"}</strong>
           </div>
           <div className="telemetry-card">
             <span>Signal Queue</span>
             <strong>Standby</strong>
           </div>
         </section>
+
+        {eventsError ? (
+          <section className="events-warning" aria-label="Event data warning">
+            <strong>Database events unavailable.</strong>
+            <span>{eventsError}</span>
+            <span>Showing local fallback events so the dashboard remains usable.</span>
+          </section>
+        ) : null}
 
         <section className="filter-strip" aria-label="Event filters">
           <label className="filter-card">
@@ -283,7 +328,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <span className="toolbar-chip">Macro</span>
             </div>
 
-            <div className="event-list" role="list" aria-label="Mock news events">
+            <div className="event-list" role="list" aria-label="News events">
               {filteredEvents.map((event) => {
                 const isActive = event.id === selectedEvent?.id;
 
@@ -322,7 +367,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               {filteredEvents.length === 0 ? (
                 <div className="empty-filter-state">
                   <strong>No events match the current filters.</strong>
-                  <span>Adjust the filters or reset them to restore the full mock stream.</span>
+                  <span>Adjust the filters or reset them to restore the current event stream.</span>
                 </div>
               ) : null}
             </div>
