@@ -120,9 +120,15 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const highSeverityCount = mockEvents.filter((event) => event.severity === "High").length;
   const globePoints = mockEvents.map((event) => ({
     ...event,
-    size: event.severity === "High" ? 0.35 : 0.24,
+    size:
+      event.id === selectedEvent?.id
+        ? 0.52
+        : event.severity === "High"
+          ? 0.35
+          : 0.24,
     color: event.severity === "High" ? "#ff8a8a" : event.severity === "Medium" ? "#ffd07a" : "#8ee9ff",
   }));
+  const ringEvents = selectedEvent ? [selectedEvent] : [];
   const worldFeatures = useMemo(() => {
     const geo = feature(worldAtlas as any, (worldAtlas as any).objects.countries) as any;
     return geo.features ?? [];
@@ -176,12 +182,29 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     material.shininess = 0.9;
   }, [globeViewport.width, globeViewport.height]);
 
+  useEffect(() => {
+    const globeInstance = globeRef.current;
+
+    if (!selectedEvent || mapMode !== "globe" || !globeInstance?.pointOfView) {
+      return;
+    }
+
+    globeInstance.pointOfView(
+      {
+        lat: selectedEvent.lat,
+        lng: selectedEvent.lng,
+        altitude: 1.75,
+      },
+      900,
+    );
+  }, [mapMode, selectedEvent]);
+
   return (
     <main className="intel-shell">
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 7: Globe Integration</p>
+            <p className="kicker">Part 8: Map and Stream Synchronization</p>
             <h1>{appName}</h1>
           </div>
 
@@ -337,6 +360,13 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   polygonSideColor={() => "rgba(16, 43, 56, 0.88)"}
                   polygonStrokeColor={() => "rgba(132, 221, 255, 0.28)"}
                   polygonsTransitionDuration={300}
+                  ringsData={ringEvents}
+                  ringLat="lat"
+                  ringLng="lng"
+                  ringColor={() => ["rgba(142, 233, 255, 0.52)", "rgba(142, 233, 255, 0.16)"]}
+                  ringMaxRadius={6}
+                  ringPropagationSpeed={2.2}
+                  ringRepeatPeriod={900}
                   pointsData={globePoints}
                   pointLat="lat"
                   pointLng="lng"
@@ -395,7 +425,10 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                           stroke="#041017"
                           strokeWidth={1.8}
                         />
-                        <circle r={event.id === selectedEvent?.id ? 14 : 11} fill="rgba(142, 233, 255, 0.12)" />
+                        <circle
+                          r={event.id === selectedEvent?.id ? 16 : 11}
+                          fill={event.id === selectedEvent?.id ? "rgba(142, 233, 255, 0.22)" : "rgba(142, 233, 255, 0.12)"}
+                        />
                       </g>
                     </Marker>
                   ))}
@@ -443,8 +476,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <h2>Global Intelligence Map</h2>
               <p>
                 {mapMode === "globe"
-                  ? "Colored event markers are live on the globe. Marker clicks work and the surface no longer depends on remote textures."
-                  : "The flat map uses the same event state and marker clicks, giving you a compact 2D intelligence view alongside the globe."}
+                  ? "Selected events now drive visible globe focus: the active point grows, pulses, and the camera shifts toward the event location."
+                  : "The flat map now shares the same active selection state, with stronger highlighted markers for the currently selected event."}
               </p>
             </div>
           </section>
