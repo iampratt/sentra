@@ -29,6 +29,14 @@ type MockEvent = {
   summary: string;
 };
 
+type MockStockImpact = {
+  symbol: string;
+  market: string;
+  sentiment: "Bearish" | "Neutral" | "Bullish";
+  direction: "Down" | "Mixed" | "Up";
+  magnitude: "Low" | "Medium" | "High";
+};
+
 const mockEvents: MockEvent[] = [
   {
     id: "mena-shipping-001",
@@ -100,6 +108,29 @@ const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
 });
 
+const mockStockImpacts: Record<string, MockStockImpact[]> = {
+  "mena-shipping-001": [
+    { symbol: "MAERSK-B.CO", market: "Copenhagen", sentiment: "Bearish", direction: "Down", magnitude: "Medium" },
+    { symbol: "XOM", market: "NYSE", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
+    { symbol: "AAL", market: "NASDAQ", sentiment: "Bearish", direction: "Down", magnitude: "Low" },
+  ],
+  "asia-chip-002": [
+    { symbol: "005930.KS", market: "Korea", sentiment: "Neutral", direction: "Mixed", magnitude: "Medium" },
+    { symbol: "ASML", market: "NASDAQ", sentiment: "Bearish", direction: "Down", magnitude: "Medium" },
+    { symbol: "NVDA", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+  ],
+  "europe-energy-003": [
+    { symbol: "RWE.DE", market: "Xetra", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
+    { symbol: "BAS.DE", market: "Xetra", sentiment: "Bearish", direction: "Down", magnitude: "Low" },
+    { symbol: "SHEL", market: "LSE", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
+  ],
+  "latam-mining-004": [
+    { symbol: "FCX", market: "NYSE", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
+    { symbol: "ANTO.L", market: "LSE", sentiment: "Bullish", direction: "Up", magnitude: "High" },
+    { symbol: "CAT", market: "NYSE", sentiment: "Bearish", direction: "Down", magnitude: "Low" },
+  ],
+};
+
 type GlobeViewport = {
   width: number;
   height: number;
@@ -117,6 +148,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
   const selectedEvent =
     mockEvents.find((event) => event.id === selectedEventId) ?? mockEvents[0] ?? null;
+  const selectedStockImpacts = selectedEvent ? mockStockImpacts[selectedEvent.id] ?? [] : [];
   const highSeverityCount = mockEvents.filter((event) => event.severity === "High").length;
   const globePoints = mockEvents.map((event) => ({
     ...event,
@@ -204,7 +236,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 9: Event Detail Panel</p>
+            <p className="kicker">Part 10: Mock Stock Impact Panel</p>
             <h1>{appName}</h1>
           </div>
 
@@ -563,6 +595,33 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       <span>Linked Symbols</span>
                       <strong>Not wired</strong>
                     </div>
+                  </div>
+                </div>
+                <div className="detail-block">
+                  <p className="detail-label">Mock Stock Impact</p>
+                  <div className="stock-impact-list">
+                    {selectedStockImpacts.map((impact) => (
+                      <article key={impact.symbol} className="stock-impact-card">
+                        <div className="stock-impact-head">
+                          <strong>{impact.symbol}</strong>
+                          <span className="tag-pill">{impact.market}</span>
+                        </div>
+                        <div className="stock-impact-grid">
+                          <div className="stock-impact-stat">
+                            <span>Sentiment</span>
+                            <strong>{impact.sentiment}</strong>
+                          </div>
+                          <div className="stock-impact-stat">
+                            <span>Direction</span>
+                            <strong>{impact.direction}</strong>
+                          </div>
+                          <div className="stock-impact-stat">
+                            <span>Magnitude</span>
+                            <strong>{impact.magnitude}</strong>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
                 </div>
               </div>
