@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET() {
   try {
     const result = await db.query<{
-      id: string;
+      db_id: string;
       title: string;
       source: string;
       region: string | null;
@@ -13,6 +13,7 @@ export async function GET() {
       lat: number | null;
       lng: number | null;
       published_at: string;
+      canonical_url: string | null;
       severity: "Low" | "Medium" | "High" | null;
       sentiment: "Bearish" | "Neutral" | "Bullish" | null;
       category: string | null;
@@ -21,7 +22,7 @@ export async function GET() {
     }>(
       `
         select
-          e.id::text as id,
+          e.id::text as db_id,
           e.title,
           coalesce(s.name, 'Unknown') as source,
           e.region,
@@ -29,6 +30,7 @@ export async function GET() {
           e.location_lat as lat,
           e.location_lng as lng,
           e.published_at::text as published_at,
+          e.canonical_url,
           e.severity,
           e.sentiment,
           e.category,
@@ -43,7 +45,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       events: result.rows.map((row) => ({
-        id: row.id,
+        id:
+          row.canonical_url?.startsWith("mock://")
+            ? row.canonical_url.replace("mock://", "")
+            : row.db_id,
         title: row.title,
         source: row.source,
         region: row.region ?? "Unknown",
