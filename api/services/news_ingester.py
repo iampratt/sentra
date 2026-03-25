@@ -60,7 +60,7 @@ def _row_to_event(row: dict, payload: NewsIngestPayload) -> NormalizedNewsEvent:
     )
 
 
-def ingest_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
+def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
     settings = get_settings()
     source_slug = _slugify(payload.source)
     content_hash = _content_hash(payload)
@@ -210,3 +210,7 @@ def ingest_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
         duplicate_reason=None,
         event=_row_to_event(row, payload),
     )
+
+
+def ingest_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
+    return ingest_news_event(payload)

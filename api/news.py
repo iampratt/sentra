@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
-from api.models.news import ManualIngestResult, NewsIngestPayload, NormalizedNewsEvent
+from api.models.news import ManualIngestResult, NewsIngestPayload, NormalizedNewsEvent, RssIngestRunResult
 from api.services.news_ingester import ingest_manual_event, normalize_payload
+from api.services.rss_ingester import ingest_rss_feeds
 
 router = APIRouter(tags=["news"])
 
@@ -9,6 +10,11 @@ router = APIRouter(tags=["news"])
 @router.post("/news/events/manual", response_model=ManualIngestResult)
 async def create_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
     return ingest_manual_event(payload)
+
+
+@router.post("/news/ingest/rss", response_model=RssIngestRunResult)
+async def ingest_rss() -> RssIngestRunResult:
+    return ingest_rss_feeds()
 
 
 @router.get("/news/contracts/examples")

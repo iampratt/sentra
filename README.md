@@ -130,3 +130,12 @@ Apply the Part 18 migration before testing duplicate behavior:
 ```bash
 pnpm db:migrate:dedupe
 ```
+
+## RSS ingest
+
+Part 19 adds a starter RSS ingestion trigger:
+
+`POST /news/ingest/rss`
+
+It pulls a small set of world-news feeds, stores new items in Postgres, and reports inserted,
+duplicate, and failed counts per source.

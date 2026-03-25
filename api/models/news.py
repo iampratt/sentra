@@ -90,3 +90,18 @@ class ManualIngestResult(BaseModel):
     status: IngestStatus
     duplicate_reason: DuplicateReason | None = None
     event: NormalizedNewsEvent
+
+
+class RssSourceRunResult(BaseModel):
+    feed_url: HttpUrl
+    source: str
+    inserted: int
+    duplicates: int
+    failed: int
+
+
+class RssIngestRunResult(BaseModel):
+    sources: list[RssSourceRunResult]
+    inserted: int
+    duplicates: int
+    failed: int
