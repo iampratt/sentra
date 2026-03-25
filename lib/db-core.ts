@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-import { getServerConfig } from "@/lib/server-config";
+import { getServerConfig } from "@/lib/server-config-core";
 
 declare global {
   var __newsDashboardPool: Pool | undefined;
