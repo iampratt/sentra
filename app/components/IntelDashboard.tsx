@@ -204,7 +204,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 8: Map and Stream Synchronization</p>
+            <p className="kicker">Part 9: Event Detail Panel</p>
             <h1>{appName}</h1>
           </div>
 
@@ -486,7 +486,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             <div className="drawer-head">
               <div>
                 <p className="section-label">Selected Event</p>
-                <h2>Impact Detail</h2>
+                <h2>Event Detail</h2>
               </div>
               <span className="status-badge">{selectedEvent?.severity ?? "Empty"}</span>
             </div>
@@ -536,18 +536,33 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   <p className="detail-label">Summary</p>
                   <p className="drawer-copy detail-copy">{selectedEvent.summary}</p>
                 </div>
-                <div className="signal-grid">
-                  <div className="signal-card">
-                    <span>Signal Bias</span>
-                    <strong>{selectedEvent.severity === "High" ? "Escalating" : "Monitoring"}</strong>
-                  </div>
-                  <div className="signal-card">
-                    <span>Correlation</span>
-                    <strong>Pending</strong>
-                  </div>
-                  <div className="signal-card">
-                    <span>Linked Symbols</span>
-                    <strong>Not wired</strong>
+                <div className="detail-block">
+                  <p className="detail-label">Placeholder Impact</p>
+                  <div className="signal-grid">
+                    <div className="signal-card">
+                      <span>Sentiment</span>
+                      <strong>{selectedEvent.severity === "High" ? "Risk-Off" : "Neutral Watch"}</strong>
+                    </div>
+                    <div className="signal-card">
+                      <span>Direction</span>
+                      <strong>{selectedEvent.severity === "High" ? "Negative Bias" : "Mixed Bias"}</strong>
+                    </div>
+                    <div className="signal-card">
+                      <span>Magnitude</span>
+                      <strong>{selectedEvent.severity === "High" ? "Elevated" : "Moderate"}</strong>
+                    </div>
+                    <div className="signal-card">
+                      <span>Signal Bias</span>
+                      <strong>{selectedEvent.severity === "High" ? "Escalating" : "Monitoring"}</strong>
+                    </div>
+                    <div className="signal-card">
+                      <span>Correlation</span>
+                      <strong>Pending</strong>
+                    </div>
+                    <div className="signal-card">
+                      <span>Linked Symbols</span>
+                      <strong>Not wired</strong>
+                    </div>
                   </div>
                 </div>
               </div>
