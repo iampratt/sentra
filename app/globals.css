@@ -185,6 +185,144 @@ h2 {
   line-height: 1.7;
 }
 
+.event-list,
+.detail-stack {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+}
+
+.event-list {
+  display: grid;
+  gap: 10px;
+}
+
+.event-card {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(151, 223, 255, 0.12);
+  border-radius: 18px;
+  padding: 14px;
+  color: inherit;
+  text-align: left;
+  background: rgba(7, 16, 21, 0.7);
+  cursor: pointer;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.event-card:hover {
+  border-color: rgba(151, 223, 255, 0.26);
+  transform: translateY(-1px);
+  background: rgba(10, 22, 29, 0.82);
+}
+
+.event-card strong {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.event-card-active {
+  border-color: rgba(151, 223, 255, 0.4);
+  background:
+    linear-gradient(180deg, rgba(142, 233, 255, 0.06), transparent 48%),
+    rgba(10, 22, 29, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(142, 233, 255, 0.08);
+}
+
+.severity-chip {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.severity-low {
+  color: #c7f4af;
+  background: rgba(112, 181, 68, 0.16);
+}
+
+.severity-medium {
+  color: #ffdca0;
+  background: rgba(199, 129, 32, 0.16);
+}
+
+.severity-high {
+  color: #ffb6b6;
+  background: rgba(196, 79, 79, 0.16);
+}
+
+.event-meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.detail-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.detail-block {
+  position: relative;
+  z-index: 1;
+}
+
+.detail-label {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.detail-block h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.detail-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-stat {
+  border: 1px solid rgba(151, 223, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(7, 16, 21, 0.7);
+}
+
+.detail-stat span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.detail-stat strong {
+  font-size: 0.96rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.detail-copy {
+  margin-top: 0;
+}
+
 .map-surface {
   position: relative;
   overflow: hidden;
@@ -372,5 +510,9 @@ h2 {
   .center-plate {
     bottom: 16px;
     padding: 16px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
