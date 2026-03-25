@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 
 type IntelDashboardProps = {
@@ -13,6 +14,8 @@ type MockEvent = {
   source: string;
   region: string;
   country: string;
+  lat: number;
+  lng: number;
   publishedAt: string;
   severity: "Low" | "Medium" | "High";
   category: string;
@@ -28,6 +31,8 @@ const mockEvents: MockEvent[] = [
     source: "Lloyd's Market Wire",
     region: "Middle East & Africa",
     country: "Egypt",
+    lat: 27.2579,
+    lng: 33.8116,
     publishedAt: "2026-03-25 08:20 UTC",
     severity: "High",
     category: "Shipping",
@@ -42,6 +47,8 @@ const mockEvents: MockEvent[] = [
     source: "Asia Tech Brief",
     region: "Asia Pacific",
     country: "South Korea",
+    lat: 37.5665,
+    lng: 126.978,
     publishedAt: "2026-03-25 07:10 UTC",
     severity: "Medium",
     category: "Semiconductors",
@@ -56,6 +63,8 @@ const mockEvents: MockEvent[] = [
     source: "Continental Energy Desk",
     region: "Europe",
     country: "Germany",
+    lat: 52.52,
+    lng: 13.405,
     publishedAt: "2026-03-25 05:45 UTC",
     severity: "Medium",
     category: "Energy",
@@ -70,6 +79,8 @@ const mockEvents: MockEvent[] = [
     source: "LatAm Commodities Watch",
     region: "Latin America",
     country: "Chile",
+    lat: -33.4489,
+    lng: -70.6693,
     publishedAt: "2026-03-24 23:50 UTC",
     severity: "High",
     category: "Metals",
@@ -80,19 +91,28 @@ const mockEvents: MockEvent[] = [
   },
 ];
 
+const Globe = dynamic(() => import("react-globe.gl"), {
+  ssr: false,
+});
+
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [selectedEventId, setSelectedEventId] = useState<string>(mockEvents[0]?.id ?? "");
 
   const selectedEvent =
     mockEvents.find((event) => event.id === selectedEventId) ?? mockEvents[0] ?? null;
   const highSeverityCount = mockEvents.filter((event) => event.severity === "High").length;
+  const globePoints = mockEvents.map((event) => ({
+    ...event,
+    size: event.severity === "High" ? 0.35 : 0.24,
+    color: event.severity === "High" ? "#ff8a8a" : event.severity === "Medium" ? "#ffd07a" : "#8ee9ff",
+  }));
 
   return (
     <main className="intel-shell">
       <section className="intel-stage" aria-label="Map-first intelligence shell">
         <header className="command-bar">
           <div className="brand-block">
-            <p className="kicker">Part 6: Mock Event Stream</p>
+            <p className="kicker">Part 7: Globe Integration</p>
             <h1>{appName}</h1>
           </div>
 
@@ -198,17 +218,37 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             </div>
           </aside>
 
-          <section className="map-surface" aria-label="Map placeholder">
+          <section className="map-surface" aria-label="Globe map">
             <div className="map-grid" aria-hidden="true" />
             <div className="orbital orbital-1" />
             <div className="orbital orbital-2" />
             <div className="map-glow" />
             <div className="crosshair crosshair-x" />
             <div className="crosshair crosshair-y" />
+            <div className="globe-wrap">
+              <Globe
+                backgroundColor="rgba(0,0,0,0)"
+                globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
+                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+                showAtmosphere
+                atmosphereColor="#79dfff"
+                atmosphereAltitude={0.16}
+                pointsData={globePoints}
+                pointLat="lat"
+                pointLng="lng"
+                pointAltitude="size"
+                pointRadius={0.36}
+                pointColor="color"
+                pointResolution={16}
+                onPointClick={(point) => setSelectedEventId((point as MockEvent).id)}
+                width={900}
+                height={720}
+              />
+            </div>
 
             <div className="map-meta map-meta-top-left">
-              <span>Lat 20.0000</span>
-              <span>Lon 0.0000</span>
+              <span>Lat {selectedEvent?.lat.toFixed(4) ?? "20.0000"}</span>
+              <span>Lon {selectedEvent?.lng.toFixed(4) ?? "0.0000"}</span>
             </div>
             <div className="map-meta map-meta-top-right">
               <span>Zoom 1.00</span>
@@ -245,8 +285,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <p className="section-label">Primary Surface</p>
               <h2>Global Intelligence Map</h2>
               <p>
-                Static placeholder only. Event selection is live in the drawers now, but map
-                rendering and marker synchronization start in Part 7 and Part 8.
+                Static event markers are live on the globe. Marker clicks now work; tighter
+                synchronization and richer overlays continue in the next part.
               </p>
             </div>
           </section>
@@ -345,11 +385,11 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             </div>
             <div className="alert-item">
               <span>Next Layer</span>
-              <strong>Markers + Globe</strong>
+              <strong>Map Sync + Filters</strong>
             </div>
             <div className="alert-item">
               <span>Status</span>
-              <strong>Awaiting Part 7</strong>
+              <strong>Awaiting Part 8</strong>
             </div>
           </div>
         </footer>

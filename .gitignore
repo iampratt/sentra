@@ -19,6 +19,5 @@ coverage/
 *.pyo
 *.pyd
 *.log
-pnpm-lock.yaml
 yarn.lock
 package-lock.json
