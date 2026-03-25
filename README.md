@@ -4,9 +4,9 @@ Incremental build of a personal-use intelligence dashboard for global news, stoc
 
 ## Current status
 
-This repository currently includes only the initial skeleton:
+This repository currently includes:
 - Next.js root configuration and frontend dependency manifest
-- Python API dependency manifest
+- FastAPI entrypoint with a health endpoint
 - Agreed top-level project folders
 - Example environment file
 
@@ -31,6 +31,18 @@ pnpm install
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r api/requirements.txt
+```
+
+Run the API:
+
+```bash
+uvicorn api.index:app --reload
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
 ```
 
 ### Environment
