@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:migrate": "pnpm exec tsx scripts/apply-migration.ts db/migrations/001_initial_schema.sql"
   },
   "dependencies": {
     "next": "^15.2.4",
@@ -29,6 +30,7 @@
     "@types/topojson-client": "^3.1.5",
     "eslint": "^9.22.0",
     "eslint-config-next": "^15.2.4",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.2"
   }
 }

@@ -67,3 +67,23 @@ curl http://localhost:3000/api/db/health
 
 If `DATABASE_URL` is correct and Postgres is reachable, the route returns the current database and
 schema. If not, it returns a readable connection failure message.
+
+## Initial schema
+
+The initial SQL schema lives at:
+
+`db/migrations/001_initial_schema.sql`
+
+Apply it with:
+
+```bash
+pnpm install
+pnpm db:migrate
+```
+
+This creates the Part 13 tables:
+- `news_sources`
+- `news_events`
+- `companies`
+- `symbols`
+- `event_symbol_impacts`
