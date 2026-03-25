@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type IntelDashboardProps = {
   appName: string;
@@ -95,8 +95,18 @@ const Globe = dynamic(() => import("react-globe.gl"), {
   ssr: false,
 });
 
+type GlobeViewport = {
+  width: number;
+  height: number;
+};
+
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [selectedEventId, setSelectedEventId] = useState<string>(mockEvents[0]?.id ?? "");
+  const globeContainerRef = useRef<HTMLDivElement | null>(null);
+  const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
+    width: 900,
+    height: 720,
+  });
 
   const selectedEvent =
     mockEvents.find((event) => event.id === selectedEventId) ?? mockEvents[0] ?? null;
@@ -106,6 +116,39 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     size: event.severity === "High" ? 0.35 : 0.24,
     color: event.severity === "High" ? "#ff8a8a" : event.severity === "Medium" ? "#ffd07a" : "#8ee9ff",
   }));
+
+  useEffect(() => {
+    const element = globeContainerRef.current;
+
+    if (!element) {
+      return;
+    }
+
+    const updateViewport = () => {
+      const { width, height } = element.getBoundingClientRect();
+
+      if (width === 0 || height === 0) {
+        return;
+      }
+
+      setGlobeViewport({
+        width: Math.round(width),
+        height: Math.round(height),
+      });
+    };
+
+    updateViewport();
+
+    const observer = new ResizeObserver(() => {
+      updateViewport();
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <main className="intel-shell">
@@ -225,7 +268,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             <div className="map-glow" />
             <div className="crosshair crosshair-x" />
             <div className="crosshair crosshair-y" />
-            <div className="globe-wrap">
+            <div ref={globeContainerRef} className="globe-wrap">
               <Globe
                 backgroundColor="rgba(0,0,0,0)"
                 globeImageUrl="//unpkg.com/three-globe/example/img/earth-dark.jpg"
@@ -241,8 +284,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                 pointColor="color"
                 pointResolution={16}
                 onPointClick={(point) => setSelectedEventId((point as MockEvent).id)}
-                width={900}
-                height={720}
+                width={globeViewport.width}
+                height={globeViewport.height}
               />
             </div>
 
