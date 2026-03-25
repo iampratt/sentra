@@ -50,3 +50,9 @@ curl http://127.0.0.1:8000/health
 ```bash
 cp .env.example .env.local
 ```
+
+The frontend reads `NEXT_PUBLIC_*` values from `.env.local`. The backend also reads `.env.local`
+from the repository root.
+
+Frontend config values are surfaced on the placeholder page. Backend config values can be checked
+at `/health/config`.
