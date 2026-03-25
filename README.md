@@ -56,3 +56,14 @@ from the repository root.
 
 Frontend config values are surfaced on the placeholder page. Backend config values can be checked
 at `/health/config`.
+
+## Database connectivity check
+
+The Next.js app includes a server-side Postgres connectivity probe:
+
+```bash
+curl http://localhost:3000/api/db/health
+```
+
+If `DATABASE_URL` is correct and Postgres is reachable, the route returns the current database and
+schema. If not, it returns a readable connection failure message.
