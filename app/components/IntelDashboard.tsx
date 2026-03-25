@@ -25,6 +25,54 @@ type GlobeViewport = {
   height: number;
 };
 
+function buildFallbackStockImpacts(event: MockEvent): MockStockImpact[] {
+  const haystack = `${event.title} ${event.category} ${event.summary}`.toLowerCase();
+
+  if (haystack.includes("ship") || haystack.includes("freight") || haystack.includes("port")) {
+    return [
+      { symbol: "ZIM", market: "NYSE", sentiment: "Bearish", direction: "Down", magnitude: "Medium" },
+      { symbol: "XLE", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+      { symbol: "GLD", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
+    ];
+  }
+
+  if (haystack.includes("chip") || haystack.includes("semi") || haystack.includes("electronics")) {
+    return [
+      { symbol: "SOXX", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Medium" },
+      { symbol: "NVDA", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+      { symbol: "ASML", market: "NASDAQ", sentiment: "Bearish", direction: "Down", magnitude: "Low" },
+    ];
+  }
+
+  if (haystack.includes("energy") || haystack.includes("gas") || haystack.includes("pipeline")) {
+    return [
+      { symbol: "XLE", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
+      { symbol: "UNG", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
+      { symbol: "VGK", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+    ];
+  }
+
+  if (haystack.includes("copper") || haystack.includes("mining") || haystack.includes("metal")) {
+    return [
+      { symbol: "COPX", market: "NASDAQ", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
+      { symbol: "FCX", market: "NYSE", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
+      { symbol: "PICK", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+    ];
+  }
+
+  return [
+    { symbol: "ACWI", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+    { symbol: "SPY", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
+    {
+      symbol: "VIXY",
+      market: "BATS",
+      sentiment: event.severity === "High" ? "Bullish" : "Neutral",
+      direction: event.severity === "High" ? "Up" : "Mixed",
+      magnitude: event.severity === "High" ? "Medium" : "Low",
+    },
+  ];
+}
+
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [events, setEvents] = useState<MockEvent[]>(mockEvents);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -96,7 +144,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
   const selectedEvent =
     filteredEvents.find((event) => event.id === selectedEventId) ?? filteredEvents[0] ?? null;
-  const selectedStockImpacts = selectedEvent ? mockStockImpacts[selectedEvent.id] ?? [] : [];
+  const selectedStockImpacts = selectedEvent
+    ? mockStockImpacts[selectedEvent.id] ?? buildFallbackStockImpacts(selectedEvent)
+    : [];
   const highSeverityCount = filteredEvents.filter((event) => event.severity === "High").length;
   const globePoints = filteredEvents.map((event) => ({
     ...event,
