@@ -5,9 +5,9 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: resolve(process.cwd(), ".env.local") });
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
-import { db } from "@/lib/db-core";
-
 async function main() {
+  const { db } = await import("@/lib/db-core");
+
   const result = await db.query<{
     title: string;
     source_name: string;

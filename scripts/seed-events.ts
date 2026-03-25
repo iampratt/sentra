@@ -5,7 +5,6 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: resolve(process.cwd(), ".env.local") });
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
-import { db } from "@/lib/db-core";
 import { mockEvents } from "@/lib/mock-data";
 
 function slugify(value: string) {
@@ -16,6 +15,8 @@ function slugify(value: string) {
 }
 
 async function main() {
+  const { db } = await import("@/lib/db-core");
+
   for (const event of mockEvents) {
     const sourceSlug = slugify(event.source);
 
