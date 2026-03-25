@@ -120,3 +120,13 @@ Part 17 adds a manual ingest endpoint that writes one validated article into Pos
 
 After posting a valid payload, refresh the frontend dashboard and the new event should appear in the
 event stream.
+
+Part 18 adds duplicate detection for manual ingest:
+- canonical URL dedupe
+- content-hash dedupe
+
+Apply the Part 18 migration before testing duplicate behavior:
+
+```bash
+pnpm db:migrate:dedupe
+```

@@ -1,13 +1,13 @@
 from fastapi import APIRouter
 
-from api.models.news import NewsIngestPayload, NormalizedNewsEvent
+from api.models.news import ManualIngestResult, NewsIngestPayload, NormalizedNewsEvent
 from api.services.news_ingester import ingest_manual_event, normalize_payload
 
 router = APIRouter(tags=["news"])
 
 
-@router.post("/news/events/manual", response_model=NormalizedNewsEvent)
-async def create_manual_event(payload: NewsIngestPayload) -> NormalizedNewsEvent:
+@router.post("/news/events/manual", response_model=ManualIngestResult)
+async def create_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
     return ingest_manual_event(payload)
 
 

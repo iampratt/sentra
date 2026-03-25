@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 SourceType = Literal["rss", "api", "scrape", "manual"]
+IngestStatus = Literal["inserted", "duplicate"]
+DuplicateReason = Literal["canonical_url", "content_hash"]
 
 
 class NewsLocation(BaseModel):
@@ -82,3 +84,9 @@ class NormalizedNewsEvent(BaseModel):
     location_lng: float | None = None
     language: str
     tags: list[str] = Field(default_factory=list)
+
+
+class ManualIngestResult(BaseModel):
+    status: IngestStatus
+    duplicate_reason: DuplicateReason | None = None
+    event: NormalizedNewsEvent
