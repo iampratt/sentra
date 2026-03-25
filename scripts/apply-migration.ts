@@ -6,8 +6,6 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: resolve(process.cwd(), ".env.local") });
 loadEnv({ path: resolve(process.cwd(), ".env") });
 
-import { db } from "@/lib/db-core";
-
 async function main() {
   const migrationPath = process.argv[2];
 
@@ -17,6 +15,7 @@ async function main() {
 
   const absolutePath = resolve(process.cwd(), migrationPath);
   const sql = await readFile(absolutePath, "utf8");
+  const { db } = await import("@/lib/db-core");
 
   await db.query(sql);
 
