@@ -151,3 +151,12 @@ Each run now stores:
 - overall status
 - inserted / duplicate / failed counts
 - number of sources processed
+
+## GDELT ingest
+
+Part 21 adds a GDELT DOC 2.0 ingestion trigger:
+
+`POST /news/ingest/gdelt`
+
+It uses GDELT DOC `ArtList` JSON output with a focused high-signal query and stores the resulting
+articles in the same normalized event model as RSS.

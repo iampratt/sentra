@@ -5,7 +5,7 @@ from psycopg import connect
 from psycopg.rows import dict_row
 
 from api.config import get_settings
-from api.models.news import IngestionRunListResult, IngestionRunRecord, RssIngestRunResult
+from api.models.news import GdeltIngestRunResult, IngestionRunListResult, IngestionRunRecord, RssIngestRunResult
 
 
 def _derive_run_status(result: RssIngestRunResult) -> str:
@@ -16,10 +16,9 @@ def _derive_run_status(result: RssIngestRunResult) -> str:
     return "success"
 
 
-def log_rss_ingestion_run(result: RssIngestRunResult) -> str:
+def _persist_run(source_type: str, status: str, inserted: int, duplicates: int, failed: int, sources: list[dict]) -> str:
     settings = get_settings()
     completed_at = datetime.now(UTC)
-    status = _derive_run_status(result)
 
     with connect(settings.database_url, row_factory=dict_row) as connection:
         with connection.cursor() as cursor:
@@ -40,14 +39,14 @@ def log_rss_ingestion_run(result: RssIngestRunResult) -> str:
                 returning id::text as id
                 """,
                 (
-                    "rss",
+                    source_type,
                     "manual",
                     status,
-                    result.inserted,
-                    result.duplicates,
-                    result.failed,
-                    len(result.sources),
-                    json.dumps([source.model_dump(mode="json") for source in result.sources]),
+                    inserted,
+                    duplicates,
+                    failed,
+                    len(sources),
+                    json.dumps(sources),
                     completed_at,
                 ),
             )
@@ -55,6 +54,30 @@ def log_rss_ingestion_run(result: RssIngestRunResult) -> str:
         connection.commit()
 
     return row["id"]
+
+
+def log_rss_ingestion_run(result: RssIngestRunResult) -> str:
+    status = _derive_run_status(result)
+    return _persist_run(
+        "rss",
+        status,
+        result.inserted,
+        result.duplicates,
+        result.failed,
+        [source.model_dump(mode="json") for source in result.sources],
+    )
+
+
+def log_gdelt_ingestion_run(result: GdeltIngestRunResult) -> str:
+    status = result.status
+    return _persist_run(
+        "gdelt",
+        status,
+        result.inserted,
+        result.duplicates,
+        result.failed,
+        [source.model_dump(mode="json") for source in result.sources],
+    )
 
 
 def list_recent_ingestion_runs(limit: int = 10) -> IngestionRunListResult:

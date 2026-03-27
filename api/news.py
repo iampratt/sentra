@@ -1,13 +1,15 @@
 from fastapi import APIRouter
 
 from api.models.news import (
+    GdeltIngestRunResult,
     IngestionRunListResult,
     ManualIngestResult,
     NewsIngestPayload,
     NormalizedNewsEvent,
     RssIngestRunResult,
 )
-from api.services.ingestion_runs import list_recent_ingestion_runs, log_rss_ingestion_run
+from api.services.gdelt_ingester import ingest_gdelt_events
+from api.services.ingestion_runs import list_recent_ingestion_runs, log_gdelt_ingestion_run, log_rss_ingestion_run
 from api.services.news_ingester import ingest_manual_event, normalize_payload
 from api.services.rss_ingester import ingest_rss_feeds
 
@@ -23,6 +25,13 @@ async def create_manual_event(payload: NewsIngestPayload) -> ManualIngestResult:
 async def ingest_rss() -> RssIngestRunResult:
     result = ingest_rss_feeds()
     run_id = log_rss_ingestion_run(result)
+    return result.model_copy(update={"run_id": run_id})
+
+
+@router.post("/news/ingest/gdelt", response_model=GdeltIngestRunResult)
+async def ingest_gdelt() -> GdeltIngestRunResult:
+    result = ingest_gdelt_events()
+    run_id = log_gdelt_ingestion_run(result)
     return result.model_copy(update={"run_id": run_id})
 
 

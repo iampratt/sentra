@@ -110,6 +110,24 @@ class RssIngestRunResult(BaseModel):
     failed: int
 
 
+class GdeltSourceRunResult(BaseModel):
+    query_url: HttpUrl
+    source: str
+    inserted: int
+    duplicates: int
+    failed: int
+    error: str | None = None
+
+
+class GdeltIngestRunResult(BaseModel):
+    run_id: str | None = None
+    status: Literal["success", "partial_failure", "failed"]
+    sources: list[GdeltSourceRunResult]
+    inserted: int
+    duplicates: int
+    failed: int
+
+
 class IngestionRunRecord(BaseModel):
     id: str
     source_type: str
