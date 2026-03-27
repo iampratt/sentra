@@ -5,6 +5,7 @@ from psycopg.rows import dict_row
 
 from api.config import get_settings
 from api.models.news import ManualIngestResult, NewsIngestPayload, NormalizedNewsEvent
+from api.services.location_resolver import resolve_location
 
 
 def _slugify(value: str) -> str:
@@ -12,21 +13,23 @@ def _slugify(value: str) -> str:
 
 
 def normalize_payload(payload: NewsIngestPayload) -> NormalizedNewsEvent:
+    resolved_payload = resolve_location(payload)
+
     return NormalizedNewsEvent(
-        id=f"preview-{_slugify(payload.title)}",
-        title=payload.title,
-        source=payload.source,
-        source_type=payload.source_type,
-        canonical_url=payload.canonical_url,
-        published_at=payload.published_at,
-        summary=payload.summary,
-        raw_content=payload.raw_content,
-        region=payload.region,
-        country=payload.country,
-        location_lat=payload.location.lat if payload.location else None,
-        location_lng=payload.location.lng if payload.location else None,
-        language=payload.language,
-        tags=payload.tags,
+        id=f"preview-{_slugify(resolved_payload.title)}",
+        title=resolved_payload.title,
+        source=resolved_payload.source,
+        source_type=resolved_payload.source_type,
+        canonical_url=resolved_payload.canonical_url,
+        published_at=resolved_payload.published_at,
+        summary=resolved_payload.summary,
+        raw_content=resolved_payload.raw_content,
+        region=resolved_payload.region,
+        country=resolved_payload.country,
+        location_lat=resolved_payload.location.lat if resolved_payload.location else None,
+        location_lng=resolved_payload.location.lng if resolved_payload.location else None,
+        language=resolved_payload.language,
+        tags=resolved_payload.tags,
     )
 
 
@@ -61,9 +64,10 @@ def _row_to_event(row: dict, payload: NewsIngestPayload) -> NormalizedNewsEvent:
 
 
 def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
+    resolved_payload = resolve_location(payload)
     settings = get_settings()
-    source_slug = _slugify(payload.source)
-    content_hash = _content_hash(payload)
+    source_slug = _slugify(resolved_payload.source)
+    content_hash = _content_hash(resolved_payload)
 
     with connect(settings.database_url, row_factory=dict_row) as connection:
         with connection.cursor() as cursor:
@@ -87,7 +91,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                 where e.canonical_url = %s
                 limit 1
                 """,
-                (payload.source, payload.source_type, str(payload.canonical_url)),
+                (resolved_payload.source, resolved_payload.source_type, str(resolved_payload.canonical_url)),
             )
             existing_by_url = cursor.fetchone()
 
@@ -95,7 +99,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                 return ManualIngestResult(
                     status="duplicate",
                     duplicate_reason="canonical_url",
-                    event=_row_to_event(existing_by_url, payload),
+                    event=_row_to_event(existing_by_url, resolved_payload),
                 )
 
             cursor.execute(
@@ -118,7 +122,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                 where e.content_hash = %s
                 limit 1
                 """,
-                (payload.source, payload.source_type, content_hash),
+                (resolved_payload.source, resolved_payload.source_type, content_hash),
             )
             existing_by_hash = cursor.fetchone()
 
@@ -126,7 +130,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                 return ManualIngestResult(
                     status="duplicate",
                     duplicate_reason="content_hash",
-                    event=_row_to_event(existing_by_hash, payload),
+                    event=_row_to_event(existing_by_hash, resolved_payload),
                 )
 
             cursor.execute(
@@ -140,7 +144,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                     updated_at = now()
                 returning id
                 """,
-                (source_slug, payload.source, payload.source_type, payload.country),
+                (source_slug, resolved_payload.source, resolved_payload.source_type, resolved_payload.country),
             )
             source_id = cursor.fetchone()["id"]
 
@@ -183,22 +187,22 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
                 """,
                 (
                     source_id,
-                    payload.title,
-                    payload.summary,
-                    payload.raw_content,
-                    str(payload.canonical_url),
+                    resolved_payload.title,
+                    resolved_payload.summary,
+                    resolved_payload.raw_content,
+                    str(resolved_payload.canonical_url),
                     content_hash,
-                    payload.published_at,
-                    payload.region,
-                    payload.country,
-                    payload.location.lat if payload.location else None,
-                    payload.location.lng if payload.location else None,
+                    resolved_payload.published_at,
+                    resolved_payload.region,
+                    resolved_payload.country,
+                    resolved_payload.location.lat if resolved_payload.location else None,
+                    resolved_payload.location.lng if resolved_payload.location else None,
                     None,
                     None,
                     None,
                     None,
-                    payload.source,
-                    payload.source_type,
+                    resolved_payload.source,
+                    resolved_payload.source_type,
                 ),
             )
             row = cursor.fetchone()
@@ -208,7 +212,7 @@ def ingest_news_event(payload: NewsIngestPayload) -> ManualIngestResult:
     return ManualIngestResult(
         status="inserted",
         duplicate_reason=None,
-        event=_row_to_event(row, payload),
+        event=_row_to_event(row, resolved_payload),
     )
 
 

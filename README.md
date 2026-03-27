@@ -160,3 +160,11 @@ Part 21 adds a GDELT DOC 2.0 ingestion trigger:
 
 It uses GDELT DOC `ArtList` JSON output with a focused high-signal query and stores the resulting
 articles in the same normalized event model as RSS.
+
+## Location normalization
+
+Part 22 improves map plotting by resolving coordinates during ingest:
+- explicit payload coordinates are preserved
+- country names map to known coordinates
+- article text is scanned for common country and capital-city cues
+- region defaults are used only when a better location is unavailable
