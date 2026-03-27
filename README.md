@@ -196,3 +196,12 @@ pnpm db:check:event-symbols
 
 This pass uses simple keyword and company rules against the curated symbol universe and stores links
 in `event_symbol_impacts`. It is intentionally rule-based only: no LLM and no pricing context yet.
+
+## Stock price context
+
+Part 25 adds a stock price service backed by `yfinance` for linked symbols:
+
+`GET /stocks/events/{event_id}/prices`
+
+It returns recent close-price context for symbols already linked to an event and degrades gracefully
+when a provider symbol is unavailable or the upstream request fails.

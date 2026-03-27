@@ -8,10 +8,12 @@ from api.models.news import (
     NormalizedNewsEvent,
     RssIngestRunResult,
 )
+from api.models.stock import EventPriceContextResult
 from api.services.gdelt_ingester import ingest_gdelt_events
 from api.services.ingestion_runs import list_recent_ingestion_runs, log_gdelt_ingestion_run, log_rss_ingestion_run
 from api.services.news_ingester import ingest_manual_event, normalize_payload
 from api.services.rss_ingester import ingest_rss_feeds
+from api.services.stock_service import get_event_price_context
 
 router = APIRouter(tags=["news"])
 
@@ -38,6 +40,11 @@ async def ingest_gdelt() -> GdeltIngestRunResult:
 @router.get("/news/ingest/runs", response_model=IngestionRunListResult)
 async def get_ingestion_runs() -> IngestionRunListResult:
     return list_recent_ingestion_runs()
+
+
+@router.get("/stocks/events/{event_id}/prices", response_model=EventPriceContextResult)
+async def get_prices_for_event(event_id: str) -> EventPriceContextResult:
+    return get_event_price_context(event_id)
 
 
 @router.get("/news/contracts/examples")
