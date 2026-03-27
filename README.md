@@ -184,3 +184,15 @@ This seeds:
 
 The initial universe is intentionally small and global so we can build linkage and pricing on top of
 it without trying to cover every ticker immediately.
+
+## Event-to-symbol linking
+
+Part 24 adds the first deterministic event-to-symbol linker:
+
+```bash
+pnpm db:link:event-symbols
+pnpm db:check:event-symbols
+```
+
+This pass uses simple keyword and company rules against the curated symbol universe and stores links
+in `event_symbol_impacts`. It is intentionally rule-based only: no LLM and no pricing context yet.
