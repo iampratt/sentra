@@ -264,13 +264,18 @@ a {
   grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(280px, 320px);
   gap: 10px;
   min-height: 72vh;
+  height: calc(100vh - 270px);
+  min-height: 680px;
 }
 
 .drawer {
   position: relative;
   overflow: hidden;
+  min-height: 0;
   border-radius: 20px;
   padding: 14px;
+  display: flex;
+  flex-direction: column;
 }
 
 .drawer::before,
@@ -329,11 +334,37 @@ h2 {
   position: relative;
   z-index: 1;
   margin-top: 12px;
+  min-height: 0;
 }
 
 .event-list {
   display: grid;
   gap: 8px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.detail-stack {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.event-list::-webkit-scrollbar,
+.detail-stack::-webkit-scrollbar {
+  width: 10px;
+}
+
+.event-list::-webkit-scrollbar-thumb,
+.detail-stack::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(151, 223, 255, 0.2);
+  background-clip: padding-box;
+}
+
+.event-list::-webkit-scrollbar-track,
+.detail-stack::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .empty-filter-state {
@@ -462,6 +493,10 @@ h2 {
   color: var(--muted);
   font-size: 0.76rem;
   line-height: 1.4;
+}
+
+.event-meta-warning {
+  color: #ffdca0;
 }
 
 .detail-stack {
@@ -593,7 +628,7 @@ h2 {
 .map-surface {
   position: relative;
   overflow: hidden;
-  min-height: 72vh;
+  min-height: 0;
   border-radius: 24px;
   border: 1px solid rgba(151, 223, 255, 0.22);
   background:
@@ -810,6 +845,8 @@ h2 {
 
   .map-frame {
     grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
   }
 
   .drawer-right {
@@ -837,6 +874,8 @@ h2 {
 
   .map-frame {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 0;
   }
 
   .map-surface {

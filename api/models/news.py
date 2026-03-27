@@ -98,6 +98,7 @@ class RssSourceRunResult(BaseModel):
     inserted: int
     duplicates: int
     failed: int
+    error: str | None = None
 
 
 class RssIngestRunResult(BaseModel):

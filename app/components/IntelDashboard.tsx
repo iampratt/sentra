@@ -25,6 +25,14 @@ type GlobeViewport = {
   height: number;
 };
 
+function hasCoordinates(event: MockEvent): event is MockEvent & { lat: number; lng: number } {
+  return typeof event.lat === "number" && typeof event.lng === "number";
+}
+
+function formatCoordinate(value: number | null) {
+  return typeof value === "number" ? value.toFixed(4) : "N/A";
+}
+
 function buildFallbackStockImpacts(event: MockEvent): MockStockImpact[] {
   const haystack = `${event.title} ${event.category} ${event.summary}`.toLowerCase();
 
@@ -141,6 +149,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
       }),
     [events, regionFilter, sentimentFilter, sourceFilter],
   );
+  const mappableEvents = useMemo(() => filteredEvents.filter(hasCoordinates), [filteredEvents]);
 
   const selectedEvent =
     filteredEvents.find((event) => event.id === selectedEventId) ?? filteredEvents[0] ?? null;
@@ -148,17 +157,27 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     ? mockStockImpacts[selectedEvent.id] ?? buildFallbackStockImpacts(selectedEvent)
     : [];
   const highSeverityCount = filteredEvents.filter((event) => event.severity === "High").length;
-  const globePoints = filteredEvents.map((event) => ({
-    ...event,
-    size:
-      event.id === selectedEvent?.id
-        ? 0.52
-        : event.severity === "High"
-          ? 0.35
-          : 0.24,
-    color: event.severity === "High" ? "#ff8a8a" : event.severity === "Medium" ? "#ffd07a" : "#8ee9ff",
-  }));
-  const ringEvents = selectedEvent ? [selectedEvent] : [];
+  const globePoints = useMemo(
+    () =>
+      mappableEvents.map((event) => ({
+        ...event,
+        size:
+          event.id === selectedEvent?.id
+            ? 0.48
+            : event.severity === "High"
+              ? 0.32
+              : 0.22,
+        color:
+          event.id === selectedEvent?.id
+            ? "#c7f7ff"
+            : event.severity === "High"
+              ? "#ff8a8a"
+              : event.severity === "Medium"
+                ? "#ffd07a"
+                : "#8ee9ff",
+      })),
+    [mappableEvents, selectedEvent],
+  );
   const worldFeatures = useMemo(() => {
     const geo = feature(worldAtlas as any, (worldAtlas as any).objects.countries) as any;
     return geo.features ?? [];
@@ -215,7 +234,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   useEffect(() => {
     const globeInstance = globeRef.current;
 
-    if (!selectedEvent || mapMode !== "globe" || !globeInstance?.pointOfView) {
+    if (!selectedEvent || !hasCoordinates(selectedEvent) || mapMode !== "globe" || !globeInstance?.pointOfView) {
       return;
     }
 
@@ -376,6 +395,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <span className="toolbar-chip toolbar-chip-active">All Regions</span>
               <span className="toolbar-chip">High Impact</span>
               <span className="toolbar-chip">Macro</span>
+              <span className="toolbar-chip">{mappableEvents.length} Mapped</span>
             </div>
 
             <div className="event-list" role="list" aria-label="News events">
@@ -404,6 +424,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       <span className="event-meta">{event.publishedAt}</span>
                     </div>
                     <span className="event-meta">{event.source}</span>
+                    {!hasCoordinates(event) ? (
+                      <span className="event-meta event-meta-warning">Location unavailable for map placement</span>
+                    ) : null}
                     <div className="tag-row" aria-label="Watchlist sectors">
                       {event.watchlist.map((tag) => (
                         <span key={tag} className="tag-pill">
@@ -453,14 +476,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   polygonCapColor={() => "rgba(44, 98, 122, 0.92)"}
                   polygonSideColor={() => "rgba(16, 43, 56, 0.88)"}
                   polygonStrokeColor={() => "rgba(132, 221, 255, 0.28)"}
-                  polygonsTransitionDuration={300}
-                  ringsData={ringEvents}
-                  ringLat="lat"
-                  ringLng="lng"
-                  ringColor={() => ["rgba(142, 233, 255, 0.52)", "rgba(142, 233, 255, 0.16)"]}
-                  ringMaxRadius={6}
-                  ringPropagationSpeed={2.2}
-                  ringRepeatPeriod={900}
+                  polygonsTransitionDuration={0}
+                  ringsData={[]}
                   pointsData={globePoints}
                   pointLat="lat"
                   pointLng="lng"
@@ -500,7 +517,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       ))
                     }
                   </Geographies>
-                  {filteredEvents.map((event) => (
+                  {mappableEvents.map((event) => (
                     <Marker
                       key={event.id}
                       coordinates={[event.lng, event.lat]}
@@ -531,8 +548,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
             )}
 
             <div className="map-meta map-meta-top-left">
-              <span>Lat {selectedEvent?.lat.toFixed(4) ?? "20.0000"}</span>
-              <span>Lon {selectedEvent?.lng.toFixed(4) ?? "0.0000"}</span>
+              <span>Lat {selectedEvent ? formatCoordinate(selectedEvent.lat) : "N/A"}</span>
+              <span>Lon {selectedEvent ? formatCoordinate(selectedEvent.lng) : "N/A"}</span>
             </div>
             <div className="map-meta map-meta-top-right">
               <span>Zoom 1.00</span>
@@ -542,7 +559,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
               <span>Layers: News Impact</span>
             </div>
             <div className="map-meta map-meta-bottom-right">
-              <span>{selectedEvent?.country ?? "No event selected"}</span>
+              <span>{selectedEvent ? (hasCoordinates(selectedEvent) ? selectedEvent.country : "No mapped location") : "No event selected"}</span>
             </div>
             <div className="map-stack map-stack-left">
               <div className="stack-card">
@@ -550,8 +567,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                 <strong>{selectedEvent?.region ?? "Global"}</strong>
               </div>
               <div className="stack-card">
-                <span>Selected Sector</span>
-                <strong>{selectedEvent?.category ?? "None"}</strong>
+                <span>Mapped Events</span>
+                <strong>{mappableEvents.length}</strong>
               </div>
             </div>
             <div className="map-stack map-stack-right">

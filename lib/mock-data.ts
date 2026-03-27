@@ -4,8 +4,8 @@ export type MockEvent = {
   source: string;
   region: string;
   country: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
   publishedAt: string;
   severity: "Low" | "Medium" | "High";
   sentiment: "Bearish" | "Neutral" | "Bullish";
