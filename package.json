@@ -11,6 +11,7 @@
     "db:migrate": "pnpm exec tsx scripts/apply-migration.ts db/migrations/001_initial_schema.sql",
     "db:migrate:dedupe": "pnpm exec tsx scripts/apply-migration.ts db/migrations/002_manual_ingest_dedupe.sql",
     "db:migrate:ingestion-runs": "pnpm exec tsx scripts/apply-migration.ts db/migrations/003_ingestion_runs.sql",
+    "db:clear:events": "pnpm exec tsx scripts/clear-events.ts",
     "db:seed:events": "pnpm exec tsx scripts/seed-events.ts",
     "db:check:events": "pnpm exec tsx scripts/check-seeded-events.ts"
   },
