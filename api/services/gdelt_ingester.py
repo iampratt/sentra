@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from time import sleep
 from urllib.parse import urlencode
 
 import httpx
@@ -11,6 +12,24 @@ GDELT_HIGH_SIGNAL_QUERY = (
     '(theme:ECON_STOCKMARKET OR theme:ECON_TRADE OR theme:TAX_FNCACT OR '
     'theme:ENV_DISASTER OR theme:ARMEDCONFLICT OR theme:WB_1204_TRANSPORT OR '
     'theme:PROTEST OR theme:SANCTIONS)'
+)
+GDELT_QUERY_PROFILES: tuple[dict[str, str], ...] = (
+    {
+        "query": GDELT_HIGH_SIGNAL_QUERY,
+        "mode": "ArtList",
+        "format": "json",
+        "maxrecords": "40",
+        "timespan": "6h",
+        "sort": "DateDesc",
+    },
+    {
+        "query": GDELT_HIGH_SIGNAL_QUERY,
+        "mode": "ArtList",
+        "format": "json",
+        "maxrecords": "20",
+        "timespan": "3h",
+        "sort": "DateDesc",
+    },
 )
 
 
@@ -32,34 +51,47 @@ def _parse_gdelt_datetime(value: str | None) -> datetime:
         return datetime.now(UTC)
 
 
-def ingest_gdelt_events() -> GdeltIngestRunResult:
-    params = {
-        "query": GDELT_HIGH_SIGNAL_QUERY,
-        "mode": "ArtList",
-        "format": "json",
-        "maxrecords": "75",
-        "timespan": "12h",
-        "sort": "DateDesc",
-    }
-    query_url = f"{GDELT_DOC_API_URL}?{urlencode(params)}"
+def _fetch_gdelt_articles() -> tuple[list[dict], str, str | None]:
+    last_error: str | None = None
 
+    with httpx.Client(
+        timeout=httpx.Timeout(connect=8.0, read=12.0, write=12.0, pool=12.0),
+        follow_redirects=True,
+        headers={"User-Agent": "news-dashboard-gdelt-ingester/0.1"},
+        http2=False,
+    ) as client:
+        for profile in GDELT_QUERY_PROFILES:
+            query_url = f"{GDELT_DOC_API_URL}?{urlencode(profile)}"
+
+            for attempt in range(2):
+                try:
+                    response = client.get(GDELT_DOC_API_URL, params=profile)
+                    response.raise_for_status()
+                    payload = response.json()
+                    articles = payload.get("articles", [])
+                    return articles, query_url, None
+                except httpx.HTTPError as error:
+                    last_error = f"profile={profile['timespan']}/{profile['maxrecords']} attempt={attempt + 1}: {error}"
+                    if attempt == 0:
+                        sleep(1.0)
+                except Exception as error:
+                    last_error = f"profile={profile['timespan']}/{profile['maxrecords']} attempt={attempt + 1}: {error}"
+                    if attempt == 0:
+                        sleep(1.0)
+
+    fallback_url = f"{GDELT_DOC_API_URL}?{urlencode(GDELT_QUERY_PROFILES[-1])}"
+    return [], fallback_url, last_error
+
+
+def ingest_gdelt_events() -> GdeltIngestRunResult:
     inserted = 0
     duplicates = 0
     failed = 0
-    error_message: str | None = None
+    articles, query_url, error_message = _fetch_gdelt_articles()
 
-    try:
-        with httpx.Client(
-            timeout=httpx.Timeout(connect=4.0, read=8.0, write=8.0, pool=8.0),
-            follow_redirects=True,
-            headers={"User-Agent": "news-dashboard-gdelt-ingester/0.1"},
-        ) as client:
-            response = client.get(GDELT_DOC_API_URL, params=params)
-            response.raise_for_status()
-            payload = response.json()
-
-        articles = payload.get("articles", [])
-
+    if error_message and not articles:
+        failed = 1
+    else:
         for article in articles:
             title = str(article.get("title", "")).strip()
             url = str(article.get("url", "")).strip()
@@ -98,12 +130,6 @@ def ingest_gdelt_events() -> GdeltIngestRunResult:
                 inserted += 1
             else:
                 duplicates += 1
-    except httpx.HTTPError as error:
-        failed += 1
-        error_message = str(error)
-    except Exception as error:
-        failed += 1
-        error_message = str(error)
 
     return GdeltIngestRunResult(
         run_id=None,
