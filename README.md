@@ -168,3 +168,19 @@ Part 22 improves map plotting by resolving coordinates during ingest:
 - country names map to known coordinates
 - article text is scanned for common country and capital-city cues
 - region defaults are used only when a better location is unavailable
+
+## Symbol universe
+
+Part 23 adds a curated tracked-symbol universe seed across multiple markets:
+
+```bash
+pnpm db:seed:symbols
+pnpm db:check:symbols
+```
+
+This seeds:
+- `companies`
+- `symbols`
+
+The initial universe is intentionally small and global so we can build linkage and pricing on top of
+it without trying to cover every ticker immediately.
