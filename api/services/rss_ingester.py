@@ -121,7 +121,11 @@ def ingest_rss_feeds() -> RssIngestRunResult:
             total_duplicates += duplicates
             total_failed += failed
 
+    status = "failed" if total_failed > 0 and total_inserted == 0 and total_duplicates == 0 else "partial_failure" if total_failed > 0 else "success"
+
     return RssIngestRunResult(
+        run_id=None,
+        status=status,
         sources=source_results,
         inserted=total_inserted,
         duplicates=total_duplicates,

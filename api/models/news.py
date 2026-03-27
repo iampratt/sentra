@@ -102,7 +102,26 @@ class RssSourceRunResult(BaseModel):
 
 
 class RssIngestRunResult(BaseModel):
+    run_id: str | None = None
+    status: Literal["success", "partial_failure", "failed"]
     sources: list[RssSourceRunResult]
     inserted: int
     duplicates: int
     failed: int
+
+
+class IngestionRunRecord(BaseModel):
+    id: str
+    source_type: str
+    trigger_type: str
+    status: str
+    inserted_count: int
+    duplicate_count: int
+    failed_count: int
+    sources_count: int
+    started_at: datetime
+    completed_at: datetime | None = None
+
+
+class IngestionRunListResult(BaseModel):
+    runs: list[IngestionRunRecord]

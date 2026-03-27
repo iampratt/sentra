@@ -139,3 +139,15 @@ Part 19 adds a starter RSS ingestion trigger:
 
 It pulls a small set of world-news feeds, stores new items in Postgres, and reports inserted,
 duplicate, and failed counts per source.
+
+Part 20 adds persisted ingestion run logging:
+
+```bash
+pnpm db:migrate:ingestion-runs
+curl http://127.0.0.1:8000/news/ingest/runs
+```
+
+Each run now stores:
+- overall status
+- inserted / duplicate / failed counts
+- number of sources processed
