@@ -1,5 +1,6 @@
 export type MockEvent = {
   id: string;
+  dbId?: string;
   title: string;
   source: string;
   region: string;

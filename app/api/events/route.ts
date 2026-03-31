@@ -49,6 +49,7 @@ export async function GET() {
           row.canonical_url?.startsWith("mock://")
             ? row.canonical_url.replace("mock://", "")
             : row.db_id,
+        dbId: row.db_id,
         title: row.title,
         source: row.source,
         region: row.region ?? "Unknown",

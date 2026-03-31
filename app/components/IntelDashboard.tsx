@@ -6,7 +6,7 @@ import { ComposableMap, Geographies, Geography, Marker } from "react-simple-maps
 import { feature } from "topojson-client";
 import worldAtlas from "world-atlas/countries-110m.json";
 
-import { mockEvents, mockStockImpacts, type MockEvent, type MockStockImpact } from "@/lib/mock-data";
+import { mockEvents, type MockEvent } from "@/lib/mock-data";
 
 type IntelDashboardProps = {
   appName: string;
@@ -25,60 +25,30 @@ type GlobeViewport = {
   height: number;
 };
 
+type LinkedPriceSymbol = {
+  ticker: string;
+  exchange: string;
+  market: string;
+  currency: string | null;
+  provider_symbol: string;
+  last_close: number | null;
+  previous_close: number | null;
+  change_percent: number | null;
+  last_trading_at: string | null;
+  status: string;
+  error: string | null;
+};
+
+type LinkedPricePayload =
+  | { ok: true; event_id: string; symbols: LinkedPriceSymbol[] }
+  | { ok: false; error: string };
+
 function hasCoordinates(event: MockEvent): event is MockEvent & { lat: number; lng: number } {
   return typeof event.lat === "number" && typeof event.lng === "number";
 }
 
 function formatCoordinate(value: number | null) {
   return typeof value === "number" ? value.toFixed(4) : "N/A";
-}
-
-function buildFallbackStockImpacts(event: MockEvent): MockStockImpact[] {
-  const haystack = `${event.title} ${event.category} ${event.summary}`.toLowerCase();
-
-  if (haystack.includes("ship") || haystack.includes("freight") || haystack.includes("port")) {
-    return [
-      { symbol: "ZIM", market: "NYSE", sentiment: "Bearish", direction: "Down", magnitude: "Medium" },
-      { symbol: "XLE", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-      { symbol: "GLD", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
-    ];
-  }
-
-  if (haystack.includes("chip") || haystack.includes("semi") || haystack.includes("electronics")) {
-    return [
-      { symbol: "SOXX", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Medium" },
-      { symbol: "NVDA", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-      { symbol: "ASML", market: "NASDAQ", sentiment: "Bearish", direction: "Down", magnitude: "Low" },
-    ];
-  }
-
-  if (haystack.includes("energy") || haystack.includes("gas") || haystack.includes("pipeline")) {
-    return [
-      { symbol: "XLE", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
-      { symbol: "UNG", market: "NYSE Arca", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
-      { symbol: "VGK", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-    ];
-  }
-
-  if (haystack.includes("copper") || haystack.includes("mining") || haystack.includes("metal")) {
-    return [
-      { symbol: "COPX", market: "NASDAQ", sentiment: "Bullish", direction: "Up", magnitude: "Medium" },
-      { symbol: "FCX", market: "NYSE", sentiment: "Bullish", direction: "Up", magnitude: "Low" },
-      { symbol: "PICK", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-    ];
-  }
-
-  return [
-    { symbol: "ACWI", market: "NASDAQ", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-    { symbol: "SPY", market: "NYSE Arca", sentiment: "Neutral", direction: "Mixed", magnitude: "Low" },
-    {
-      symbol: "VIXY",
-      market: "BATS",
-      sentiment: event.severity === "High" ? "Bullish" : "Neutral",
-      direction: event.severity === "High" ? "Up" : "Mixed",
-      magnitude: event.severity === "High" ? "Medium" : "Low",
-    },
-  ];
 }
 
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
@@ -91,6 +61,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [sourceFilter, setSourceFilter] = useState<FilterValue>("All");
   const globeContainerRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<any>(null);
+  const [linkedSymbols, setLinkedSymbols] = useState<LinkedPriceSymbol[]>([]);
+  const [linkedSymbolsError, setLinkedSymbolsError] = useState<string | null>(null);
+  const [linkedSymbolsLoading, setLinkedSymbolsLoading] = useState(false);
   const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
     width: 900,
     height: 720,
@@ -153,9 +126,6 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
   const selectedEvent =
     filteredEvents.find((event) => event.id === selectedEventId) ?? filteredEvents[0] ?? null;
-  const selectedStockImpacts = selectedEvent
-    ? mockStockImpacts[selectedEvent.id] ?? buildFallbackStockImpacts(selectedEvent)
-    : [];
   const highSeverityCount = filteredEvents.filter((event) => event.severity === "High").length;
   const globePoints = useMemo(
     () =>
@@ -255,6 +225,51 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
     setSelectedEventId(filteredEvents[0].id);
   }, [filteredEvents, selectedEvent]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLinkedSymbols() {
+      if (!selectedEvent?.dbId) {
+        setLinkedSymbols([]);
+        setLinkedSymbolsError(null);
+        setLinkedSymbolsLoading(false);
+        return;
+      }
+
+      try {
+        setLinkedSymbolsLoading(true);
+        const response = await fetch(`/api/events/${selectedEvent.dbId}/prices`, { cache: "no-store" });
+        const payload = (await response.json()) as LinkedPricePayload;
+
+        if (!response.ok || !payload.ok) {
+          throw new Error("error" in payload ? payload.error : "Failed to load linked symbol prices.");
+        }
+
+        if (!cancelled) {
+          setLinkedSymbols(payload.symbols);
+          setLinkedSymbolsError(null);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load linked symbol prices.";
+
+        if (!cancelled) {
+          setLinkedSymbols([]);
+          setLinkedSymbolsError(message);
+        }
+      } finally {
+        if (!cancelled) {
+          setLinkedSymbolsLoading(false);
+        }
+      }
+    }
+
+    void loadLinkedSymbols();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent?.dbId]);
 
   const resetFilters = () => {
     setRegionFilter("All");
@@ -677,31 +692,63 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                   </div>
                 </div>
                 <div className="detail-block">
-                  <p className="detail-label">Mock Stock Impact</p>
-                  <div className="stock-impact-list">
-                    {selectedStockImpacts.map((impact) => (
-                      <article key={impact.symbol} className="stock-impact-card">
-                        <div className="stock-impact-head">
-                          <strong>{impact.symbol}</strong>
-                          <span className="tag-pill">{impact.market}</span>
-                        </div>
-                        <div className="stock-impact-grid">
-                          <div className="stock-impact-stat">
-                            <span>Sentiment</span>
-                            <strong>{impact.sentiment}</strong>
+                  <p className="detail-label">Linked Symbols & Price Context</p>
+                  {linkedSymbolsLoading ? (
+                    <div className="stock-impact-empty">
+                      <strong>Loading linked symbol prices...</strong>
+                    </div>
+                  ) : null}
+                  {linkedSymbolsError ? (
+                    <div className="stock-impact-empty">
+                      <strong>Linked symbol prices unavailable.</strong>
+                      <span>{linkedSymbolsError}</span>
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading && !linkedSymbolsError && linkedSymbols.length === 0 ? (
+                    <div className="stock-impact-empty">
+                      <strong>No linked symbols persisted for this event yet.</strong>
+                      <span>Run the event-symbol linker first, then reload this event.</span>
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading && !linkedSymbolsError && linkedSymbols.length > 0 ? (
+                    <div className="stock-impact-list">
+                      {linkedSymbols.map((symbol) => (
+                        <article key={`${symbol.ticker}-${symbol.exchange}`} className="stock-impact-card">
+                          <div className="stock-impact-head">
+                            <strong>{symbol.ticker}</strong>
+                            <span className="tag-pill">{symbol.market}</span>
                           </div>
-                          <div className="stock-impact-stat">
-                            <span>Direction</span>
-                            <strong>{impact.direction}</strong>
+                          <div className="stock-impact-grid">
+                            <div className="stock-impact-stat">
+                              <span>Exchange</span>
+                              <strong>{symbol.exchange}</strong>
+                            </div>
+                            <div className="stock-impact-stat">
+                              <span>Last Close</span>
+                              <strong>
+                                {symbol.last_close !== null
+                                  ? `${symbol.currency ?? ""} ${symbol.last_close.toFixed(2)}`.trim()
+                                  : "Unavailable"}
+                              </strong>
+                            </div>
+                            <div className="stock-impact-stat">
+                              <span>Change</span>
+                              <strong>
+                                {symbol.change_percent !== null ? `${symbol.change_percent.toFixed(2)}%` : "Unavailable"}
+                              </strong>
+                            </div>
                           </div>
-                          <div className="stock-impact-stat">
-                            <span>Magnitude</span>
-                            <strong>{impact.magnitude}</strong>
+                          <div className="tag-row">
+                            <span className="tag-pill">{symbol.provider_symbol}</span>
+                            <span className={`tag-pill${symbol.status === "ok" ? "" : " tag-pill-warning"}`}>
+                              {symbol.status}
+                            </span>
                           </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                          {symbol.error ? <span className="event-meta event-meta-warning">{symbol.error}</span> : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : (

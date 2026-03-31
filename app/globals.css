@@ -565,6 +565,20 @@ h2 {
   gap: 8px;
 }
 
+.stock-impact-empty {
+  display: grid;
+  gap: 6px;
+  border: 1px dashed rgba(151, 223, 255, 0.24);
+  border-radius: 14px;
+  padding: 12px;
+  color: var(--muted);
+  background: rgba(7, 16, 21, 0.54);
+}
+
+.stock-impact-empty strong {
+  color: var(--text);
+}
+
 .stock-impact-card {
   border: 1px solid rgba(151, 223, 255, 0.12);
   border-radius: 14px;
@@ -583,6 +597,11 @@ h2 {
 .stock-impact-head strong {
   font-size: 0.96rem;
   line-height: 1.3;
+}
+
+.tag-pill-warning {
+  color: #ffdca0;
+  border-color: rgba(255, 196, 114, 0.26);
 }
 
 .stock-impact-grid {
