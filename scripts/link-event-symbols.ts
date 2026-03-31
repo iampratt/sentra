@@ -20,9 +20,27 @@ type SymbolRow = {
   symbol_id: string;
   company_id: string;
   company_slug: string;
+  company_name: string;
+  ticker: string;
+  sector: string | null;
+  industry: string | null;
+  company_country: string | null;
 };
 
-function matchCompanySlugs(event: EventRow): string[] {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasToken(haystack: string, token: string) {
+  if (token.length < 2) {
+    return false;
+  }
+
+  const pattern = new RegExp(`(^|[^a-z0-9])${escapeRegExp(token.toLowerCase())}([^a-z0-9]|$)`);
+  return pattern.test(haystack);
+}
+
+function matchCompanySlugs(event: EventRow, symbols: SymbolRow[]): Map<string, string[]> {
   const haystack = [
     event.title,
     event.summary ?? "",
@@ -33,9 +51,39 @@ function matchCompanySlugs(event: EventRow): string[] {
     .join(" ")
     .toLowerCase();
 
-  return symbolLinkRules
-    .filter((rule) => rule.keywords.some((keyword) => haystack.includes(keyword.toLowerCase())))
-    .map((rule) => rule.companySlug);
+  const matches = new Map<string, string[]>();
+
+  for (const rule of symbolLinkRules) {
+    const matchedKeywords = rule.keywords.filter((keyword) => haystack.includes(keyword.toLowerCase()));
+    if (matchedKeywords.length > 0) {
+      matches.set(rule.companySlug, [...(matches.get(rule.companySlug) ?? []), ...matchedKeywords.map((keyword) => `keyword:${keyword}`)]);
+    }
+  }
+
+  for (const symbol of symbols) {
+    const reasons: string[] = [];
+    if (hasToken(haystack, symbol.ticker)) {
+      reasons.push(`ticker:${symbol.ticker}`);
+    }
+
+    if (symbol.company_name && haystack.includes(symbol.company_name.toLowerCase())) {
+      reasons.push(`company:${symbol.company_name}`);
+    }
+
+    if (symbol.industry && haystack.includes(symbol.industry.toLowerCase())) {
+      reasons.push(`industry:${symbol.industry}`);
+    }
+
+    if (symbol.company_country && haystack.includes(symbol.company_country.toLowerCase()) && symbol.sector && haystack.includes(symbol.sector.toLowerCase())) {
+      reasons.push(`country-sector:${symbol.company_country}/${symbol.sector}`);
+    }
+
+    if (reasons.length > 0) {
+      matches.set(symbol.company_slug, [...(matches.get(symbol.company_slug) ?? []), ...reasons]);
+    }
+  }
+
+  return matches;
 }
 
 async function main() {
@@ -60,7 +108,12 @@ async function main() {
       select
         s.id::text as symbol_id,
         c.id::text as company_id,
-        c.slug as company_slug
+        c.slug as company_slug,
+        c.name as company_name,
+        s.ticker,
+        c.sector,
+        c.industry,
+        c.country as company_country
       from symbols s
       inner join companies c on c.id = s.company_id
     `,
@@ -77,7 +130,8 @@ async function main() {
   let insertedLinks = 0;
 
   for (const event of eventsResult.rows) {
-    const matchedCompanySlugs = [...new Set(matchCompanySlugs(event))];
+    const matchReasons = matchCompanySlugs(event, symbolsResult.rows);
+    const matchedCompanySlugs = [...matchReasons.keys()];
     if (matchedCompanySlugs.length === 0) {
       continue;
     }
@@ -110,9 +164,9 @@ async function main() {
             null,
             null,
             null,
-            0.35,
+            0.45,
             "1-3d",
-            "Deterministic keyword/company match from event content.",
+            `Deterministic match from event content: ${(matchReasons.get(companySlug) ?? []).join(", ")}`,
           ],
         );
 

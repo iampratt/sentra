@@ -9,6 +9,7 @@ async function main() {
   const { db } = await import("@/lib/db-core");
 
   const result = await db.query<{
+    event_id: string;
     event_title: string;
     ticker: string;
     exchange: string;
@@ -17,6 +18,7 @@ async function main() {
   }>(
     `
       select
+        e.id::text as event_id,
         e.title as event_title,
         s.ticker,
         s.exchange,
