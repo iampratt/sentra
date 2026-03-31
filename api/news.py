@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from api.models.news import (
     GdeltIngestRunResult,
@@ -12,6 +12,7 @@ from api.models.analysis import AnalysisEventPayload, AnalysisRunResult
 from api.models.stock import EventPriceContextResult
 from api.services.gdelt_ingester import ingest_gdelt_events
 from api.services.analysis_provider import get_analysis_provider
+from api.services.analysis_service import run_event_analysis
 from api.services.ingestion_runs import list_recent_ingestion_runs, log_gdelt_ingestion_run, log_rss_ingestion_run
 from api.services.news_ingester import ingest_manual_event, normalize_payload
 from api.services.rss_ingester import ingest_rss_feeds
@@ -53,6 +54,16 @@ async def get_prices_for_event(event_id: str) -> EventPriceContextResult:
 async def test_analysis_provider(payload: AnalysisEventPayload) -> AnalysisRunResult:
     provider = get_analysis_provider()
     return provider.analyze_event(payload)
+
+
+@router.post("/analysis/events/{event_id}/run", response_model=AnalysisRunResult)
+async def analyze_event(event_id: str) -> AnalysisRunResult:
+    try:
+        return run_event_analysis(event_id)
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Analysis failed: {error}") from error
 
 
 @router.get("/news/contracts/examples")

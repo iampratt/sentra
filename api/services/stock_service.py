@@ -46,6 +46,12 @@ def _fetch_price_context_batch(requests: list[dict[str, str | None]]) -> dict[st
                 market=str(request["market"]),
                 currency=request["currency"],
                 provider_symbol=provider_symbol,
+                sentiment=None,
+                direction=None,
+                magnitude=None,
+                confidence=None,
+                time_horizon=None,
+                rationale=None,
                 status="error",
                 error=str(error),
             )
@@ -69,6 +75,12 @@ def _fetch_price_context_batch(requests: list[dict[str, str | None]]) -> dict[st
                     market=market,
                     currency=currency,
                     provider_symbol=provider_symbol,
+                    sentiment=None,
+                    direction=None,
+                    magnitude=None,
+                    confidence=None,
+                    time_horizon=None,
+                    rationale=None,
                     status="unavailable",
                     error="No recent close prices returned by provider.",
                 )
@@ -93,6 +105,12 @@ def _fetch_price_context_batch(requests: list[dict[str, str | None]]) -> dict[st
                 previous_close=previous_close,
                 change_percent=change_percent,
                 last_trading_at=last_trading_at,
+                sentiment=None,
+                direction=None,
+                magnitude=None,
+                confidence=None,
+                time_horizon=None,
+                rationale=None,
                 status="ok",
             )
         except Exception as error:
@@ -102,6 +120,12 @@ def _fetch_price_context_batch(requests: list[dict[str, str | None]]) -> dict[st
                 market=market,
                 currency=currency,
                 provider_symbol=provider_symbol,
+                sentiment=None,
+                direction=None,
+                magnitude=None,
+                confidence=None,
+                time_horizon=None,
+                rationale=None,
                 status="error",
                 error=str(error),
             )
@@ -152,6 +176,12 @@ def _load_cached_context(cursor, provider_symbol: str) -> StockPriceContext | No
         previous_close=row["previous_close"],
         change_percent=row["change_percent"],
         last_trading_at=row["last_trading_at"],
+        sentiment=None,
+        direction=None,
+        magnitude=None,
+        confidence=None,
+        time_horizon=None,
+        rationale=None,
         status=row["status"],
         error=row["error"],
     )
@@ -217,7 +247,13 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
                   s.ticker,
                   s.exchange,
                   s.market,
-                  s.currency
+                  s.currency,
+                  esi.sentiment,
+                  esi.direction,
+                  esi.magnitude,
+                  esi.confidence,
+                  esi.time_horizon,
+                  esi.rationale
                 from event_symbol_impacts esi
                 inner join symbols s on s.id = esi.symbol_id
                 where esi.event_id::text = %s
@@ -251,12 +287,31 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
             for context in fetched_map.values():
                 _store_cached_context(cursor, context)
 
+            symbols: list[StockPriceContext] = []
+            merged_contexts = {context.provider_symbol: context for context in [*cached_or_pending, *fetched_map.values()]}
+
+            for row in rows:
+                provider_symbol = _provider_symbol(row["ticker"], row["exchange"])
+                base_context = merged_contexts.get(provider_symbol)
+                if not base_context:
+                    continue
+
+                symbols.append(
+                    base_context.model_copy(
+                        update={
+                            "sentiment": row["sentiment"],
+                            "direction": row["direction"],
+                            "magnitude": row["magnitude"],
+                            "confidence": float(row["confidence"]) if row["confidence"] is not None else None,
+                            "time_horizon": row["time_horizon"],
+                            "rationale": row["rationale"],
+                        }
+                    )
+                )
+
         connection.commit()
 
     return EventPriceContextResult(
         event_id=event_id,
-        symbols=[
-            *cached_or_pending,
-            *fetched_map.values(),
-        ],
+        symbols=symbols,
     )

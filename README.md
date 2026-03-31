@@ -214,3 +214,13 @@ Part 27 adds a Groq-first analysis provider abstraction with a test endpoint:
 
 This does not persist analysis results yet. It only proves that the provider layer can accept an
 event plus candidate symbols and return structured symbol-impact output.
+
+## Manual event analysis
+
+Part 28 adds a manual event-analysis run endpoint:
+
+`POST /analysis/events/{event_id}/run`
+
+For now, analysis results are written back into the existing `event_symbol_impacts` rows so the
+dashboard can render prediction fields immediately. Part 29 will separate this into versioned
+analysis history.

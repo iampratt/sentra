@@ -35,12 +35,22 @@ type LinkedPriceSymbol = {
   previous_close: number | null;
   change_percent: number | null;
   last_trading_at: string | null;
+  sentiment: string | null;
+  direction: string | null;
+  magnitude: string | null;
+  confidence: number | null;
+  time_horizon: string | null;
+  rationale: string | null;
   status: string;
   error: string | null;
 };
 
 type LinkedPricePayload =
   | { ok: true; event_id: string; symbols: LinkedPriceSymbol[] }
+  | { ok: false; error: string };
+
+type AnalysisRunPayload =
+  | { ok: true; provider: string; model: string; event_id: string; impacts: Array<unknown>; provider_status: string; error?: string | null }
   | { ok: false; error: string };
 
 function hasCoordinates(event: MockEvent): event is MockEvent & { lat: number; lng: number } {
@@ -64,6 +74,8 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [linkedSymbols, setLinkedSymbols] = useState<LinkedPriceSymbol[]>([]);
   const [linkedSymbolsError, setLinkedSymbolsError] = useState<string | null>(null);
   const [linkedSymbolsLoading, setLinkedSymbolsLoading] = useState(false);
+  const [analysisRunning, setAnalysisRunning] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
     width: 900,
     height: 720,
@@ -275,6 +287,40 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     setRegionFilter("All");
     setSentimentFilter("All");
     setSourceFilter("All");
+  };
+
+  const runAnalysis = async () => {
+    if (!selectedEvent?.dbId) {
+      setAnalysisError("This event is not stored yet, so analysis cannot run.");
+      return;
+    }
+
+    try {
+      setAnalysisRunning(true);
+      setAnalysisError(null);
+
+      const response = await fetch(`/api/events/${selectedEvent.dbId}/analysis`, {
+        method: "POST",
+      });
+      const payload = (await response.json()) as AnalysisRunPayload;
+
+      if (!response.ok || !payload.ok) {
+        throw new Error("error" in payload ? (payload.error ?? "Failed to run analysis.") : "Failed to run analysis.");
+      }
+
+      const refreshed = await fetch(`/api/events/${selectedEvent.dbId}/prices`, { cache: "no-store" });
+      const refreshedPayload = (await refreshed.json()) as LinkedPricePayload;
+
+      if (refreshed.ok && refreshedPayload.ok) {
+        setLinkedSymbols(refreshedPayload.symbols);
+        setLinkedSymbolsError(null);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to run analysis.";
+      setAnalysisError(message);
+    } finally {
+      setAnalysisRunning(false);
+    }
   };
 
   return (
@@ -693,6 +739,22 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                 </div>
                 <div className="detail-block">
                   <p className="detail-label">Linked Symbols & Price Context</p>
+                  <div className="tag-row">
+                    <button
+                      type="button"
+                      className="action-button"
+                      onClick={() => void runAnalysis()}
+                      disabled={analysisRunning || !selectedEvent?.dbId}
+                    >
+                      {analysisRunning ? "Running Analysis..." : "Run Analysis"}
+                    </button>
+                  </div>
+                  {analysisError ? (
+                    <div className="stock-impact-empty">
+                      <strong>Analysis unavailable.</strong>
+                      <span>{analysisError}</span>
+                    </div>
+                  ) : null}
                   {linkedSymbolsLoading ? (
                     <div className="stock-impact-empty">
                       <strong>Loading linked symbol prices...</strong>
@@ -724,6 +786,10 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                               <strong>{symbol.exchange}</strong>
                             </div>
                             <div className="stock-impact-stat">
+                              <span>Signal</span>
+                              <strong>{symbol.direction ?? "Not analyzed"}</strong>
+                            </div>
+                            <div className="stock-impact-stat">
                               <span>Last Close</span>
                               <strong>
                                 {symbol.last_close !== null
@@ -743,7 +809,11 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                             <span className={`tag-pill${symbol.status === "ok" ? "" : " tag-pill-warning"}`}>
                               {symbol.status}
                             </span>
+                            {symbol.sentiment ? <span className="tag-pill">{symbol.sentiment}</span> : null}
+                            {symbol.magnitude ? <span className="tag-pill">{symbol.magnitude}</span> : null}
+                            {symbol.time_horizon ? <span className="tag-pill">{symbol.time_horizon}</span> : null}
                           </div>
+                          {symbol.rationale ? <span className="event-meta">{symbol.rationale}</span> : null}
                           {symbol.error ? <span className="event-meta event-meta-warning">{symbol.error}</span> : null}
                         </article>
                       ))}
