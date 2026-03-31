@@ -4,6 +4,7 @@ pydantic-settings==2.8.1
 psycopg[binary]==3.2.6
 httpx==0.28.1
 feedparser==6.0.11
+groq==0.18.0
 yfinance==0.2.54
 qdrant-client==1.13.3
 langchain==0.3.21

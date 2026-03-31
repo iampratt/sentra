@@ -205,3 +205,12 @@ Part 25 adds a stock price service backed by `yfinance` for linked symbols:
 
 It returns recent close-price context for symbols already linked to an event and degrades gracefully
 when a provider symbol is unavailable or the upstream request fails.
+
+## Analysis provider abstraction
+
+Part 27 adds a Groq-first analysis provider abstraction with a test endpoint:
+
+`POST /analysis/providers/test`
+
+This does not persist analysis results yet. It only proves that the provider layer can accept an
+event plus candidate symbols and return structured symbol-impact output.
