@@ -37,6 +37,7 @@ def run_event_analysis(event_id: str) -> AnalysisRunResult:
                   s.ticker,
                   s.exchange,
                   s.market,
+                  s.id::text as symbol_id,
                   c.name as company_name
                 from event_symbol_impacts esi
                 inner join symbols s on s.id = esi.symbol_id
@@ -69,36 +70,104 @@ def run_event_analysis(event_id: str) -> AnalysisRunResult:
             provider = get_analysis_provider()
             result = provider.analyze_event(payload)
 
+            cursor.execute(
+                """
+                update analysis_runs
+                set is_active = false,
+                    updated_at = now()
+                where event_id::text = %s
+                  and is_active = true
+                """,
+                (event_id,),
+            )
+
+            cursor.execute(
+                """
+                select coalesce(max(analysis_version), 0) + 1 as next_version
+                from analysis_runs
+                where event_id::text = %s
+                """,
+                (event_id,),
+            )
+            version_row = cursor.fetchone()
+            next_version = int(version_row["next_version"]) if version_row else 1
+
+            cursor.execute(
+                """
+                insert into analysis_runs (
+                  event_id,
+                  analysis_version,
+                  provider,
+                  model,
+                  provider_status,
+                  error,
+                  is_active,
+                  created_at,
+                  updated_at
+                )
+                values (%s, %s, %s, %s, %s, %s, true, now(), now())
+                returning id::text as analysis_run_id
+                """,
+                (
+                    event_id,
+                    next_version,
+                    result.provider,
+                    result.model,
+                    result.provider_status,
+                    result.error,
+                ),
+            )
+            analysis_run_row = cursor.fetchone()
+            analysis_run_id = analysis_run_row["analysis_run_id"] if analysis_run_row else None
+
+            symbol_id_map = {(row["ticker"], row["exchange"]): row["symbol_id"] for row in symbol_rows}
+
             for impact in result.impacts:
+                symbol_id = symbol_id_map.get((impact.ticker, impact.exchange))
+                if not symbol_id or not analysis_run_id:
+                    continue
+
                 cursor.execute(
                     """
-                    update event_symbol_impacts esi
-                    set
-                      sentiment = %s,
-                      direction = %s,
-                      magnitude = %s,
-                      confidence = %s,
-                      time_horizon = %s,
-                      rationale = %s
-                    from symbols s
-                    where esi.symbol_id = s.id
-                      and esi.event_id::text = %s
-                      and s.ticker = %s
-                      and s.exchange = %s
+                    insert into analysis_impacts (
+                      analysis_run_id,
+                      symbol_id,
+                      sentiment,
+                      direction,
+                      magnitude,
+                      confidence,
+                      time_horizon,
+                      rationale,
+                      created_at,
+                      updated_at
+                    )
+                    values (%s, %s, %s, %s, %s, %s, %s, %s, now(), now())
+                    on conflict (analysis_run_id, symbol_id) do update
+                    set sentiment = excluded.sentiment,
+                        direction = excluded.direction,
+                        magnitude = excluded.magnitude,
+                        confidence = excluded.confidence,
+                        time_horizon = excluded.time_horizon,
+                        rationale = excluded.rationale,
+                        updated_at = now()
                     """,
                     (
+                        analysis_run_id,
+                        symbol_id,
                         impact.sentiment,
                         impact.direction,
                         impact.magnitude,
                         impact.confidence,
                         impact.time_horizon,
                         impact.rationale,
-                        event_id,
-                        impact.ticker,
-                        impact.exchange,
                     ),
                 )
 
         connection.commit()
 
-    return result
+    return result.model_copy(
+        update={
+            "analysis_run_id": analysis_run_id,
+            "analysis_version": next_version,
+        }
+    )

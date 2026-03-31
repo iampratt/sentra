@@ -41,6 +41,7 @@ type LinkedPriceSymbol = {
   confidence: number | null;
   time_horizon: string | null;
   rationale: string | null;
+  analysis_version: number | null;
   status: string;
   error: string | null;
 };
@@ -812,6 +813,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                             {symbol.sentiment ? <span className="tag-pill">{symbol.sentiment}</span> : null}
                             {symbol.magnitude ? <span className="tag-pill">{symbol.magnitude}</span> : null}
                             {symbol.time_horizon ? <span className="tag-pill">{symbol.time_horizon}</span> : null}
+                            {symbol.analysis_version !== null ? (
+                              <span className="tag-pill">v{symbol.analysis_version}</span>
+                            ) : null}
                           </div>
                           {symbol.rationale ? <span className="event-meta">{symbol.rationale}</span> : null}
                           {symbol.error ? <span className="event-meta event-meta-warning">{symbol.error}</span> : null}

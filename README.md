@@ -221,6 +221,26 @@ Part 28 adds a manual event-analysis run endpoint:
 
 `POST /analysis/events/{event_id}/run`
 
+It analyzes a stored event against its linked symbols and makes the latest signal fields available
+to the dashboard.
+
+## Analysis history
+
+Part 29 moves analysis persistence into separate versioned tables:
+
+```bash
+pnpm db:migrate:analysis-history
+```
+
+Each event analysis now creates:
+- one `analysis_runs` record
+- one or more `analysis_impacts` records
+
+Only the latest active run is read back into the dashboard, so rerunning analysis creates history
+without overwriting older analysis results.
+
+`POST /analysis/events/{event_id}/run`
+
 For now, analysis results are written back into the existing `event_symbol_impacts` rows so the
 dashboard can render prediction fields immediately. Part 29 will separate this into versioned
 analysis history.

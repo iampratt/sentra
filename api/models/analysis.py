@@ -42,6 +42,8 @@ class AnalysisRunResult(BaseModel):
     provider: str
     model: str
     event_id: str
+    analysis_run_id: str | None = None
+    analysis_version: int | None = None
     impacts: list[SymbolImpactAnalysis]
     provider_status: str
     error: str | None = None

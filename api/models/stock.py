@@ -19,6 +19,7 @@ class StockPriceContext(BaseModel):
     confidence: float | None = None
     time_horizon: str | None = None
     rationale: str | None = None
+    analysis_version: int | None = None
     status: str
     error: str | None = None
 

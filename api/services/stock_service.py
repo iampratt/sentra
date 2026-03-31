@@ -248,18 +248,30 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
                   s.exchange,
                   s.market,
                   s.currency,
-                  esi.sentiment,
-                  esi.direction,
-                  esi.magnitude,
-                  esi.confidence,
-                  esi.time_horizon,
-                  esi.rationale
+                  air.analysis_version,
+                  ai.sentiment,
+                  ai.direction,
+                  ai.magnitude,
+                  ai.confidence,
+                  ai.time_horizon,
+                  ai.rationale
                 from event_symbol_impacts esi
                 inner join symbols s on s.id = esi.symbol_id
+                left join (
+                  select id, event_id, analysis_version
+                  from analysis_runs
+                  where event_id::text = %s
+                    and is_active = true
+                  order by analysis_version desc, created_at desc
+                  limit 1
+                ) air on air.event_id = esi.event_id
+                left join analysis_impacts ai
+                  on ai.analysis_run_id = air.id
+                 and ai.symbol_id = s.id
                 where esi.event_id::text = %s
                 order by s.market asc, s.exchange asc, s.ticker asc
                 """,
-                (event_id,),
+                (event_id, event_id),
             )
             rows = cursor.fetchall()
 
@@ -305,6 +317,7 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
                             "confidence": float(row["confidence"]) if row["confidence"] is not None else None,
                             "time_horizon": row["time_horizon"],
                             "rationale": row["rationale"],
+                            "analysis_version": int(row["analysis_version"]) if row["analysis_version"] is not None else None,
                         }
                     )
                 )
