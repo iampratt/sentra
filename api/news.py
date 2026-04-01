@@ -10,10 +10,19 @@ from api.models.news import (
 )
 from api.models.analysis import AnalysisEventPayload, AnalysisRunResult
 from api.models.stock import EventPriceContextResult
-from api.models.vector import EventEmbeddingUpsertPayload, EventEmbeddingUpsertResult, VectorHealthResult
+from api.models.vector import (
+    BatchEventEmbeddingRequest,
+    BatchEventEmbeddingResult,
+    EventEmbeddingGeneratePayload,
+    EventEmbeddingGenerateResult,
+    EventEmbeddingUpsertPayload,
+    EventEmbeddingUpsertResult,
+    VectorHealthResult,
+)
 from api.services.gdelt_ingester import ingest_gdelt_events
 from api.services.analysis_provider import get_analysis_provider
 from api.services.analysis_service import run_event_analysis
+from api.services.embedding_service import embed_event, embed_recent_events
 from api.services.ingestion_runs import list_recent_ingestion_runs, log_gdelt_ingestion_run, log_rss_ingestion_run
 from api.services.news_ingester import ingest_manual_event, normalize_payload
 from api.services.qdrant_service import get_vector_health, upsert_event_embedding
@@ -68,6 +77,27 @@ async def upsert_vector_for_event(event_id: str, payload: EventEmbeddingUpsertPa
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Vector upsert failed: {error}") from error
+
+
+@router.post("/vectors/events/{event_id}/embed", response_model=EventEmbeddingGenerateResult)
+async def embed_vector_for_event(event_id: str, payload: EventEmbeddingGeneratePayload) -> EventEmbeddingGenerateResult:
+    try:
+        return embed_event(event_id, payload)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Embedding generation failed: {error}") from error
+
+
+@router.post("/vectors/embed/recent", response_model=BatchEventEmbeddingResult)
+async def embed_vectors_for_recent_events(
+    payload: BatchEventEmbeddingRequest,
+    limit: int = 10,
+) -> BatchEventEmbeddingResult:
+    try:
+        return embed_recent_events(limit=limit, payload=payload)
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Batch embedding failed: {error}") from error
 
 
 @router.post("/analysis/providers/test", response_model=AnalysisRunResult)

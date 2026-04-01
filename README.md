@@ -249,6 +249,18 @@ Part 31 adds Qdrant collection scaffolding and a manual event-vector upsert path
 This part creates or verifies the `news_event_embeddings` collection and lets you write an
 embedding for a stored event, but it does not generate embeddings automatically yet.
 
+## Event embedding pipeline
+
+Part 32 adds the first real embedding generation flow using
+`sentence-transformers/all-MiniLM-L6-v2`:
+
+- `POST /vectors/events/{event_id}/embed`
+- `POST /vectors/embed/recent?limit=10`
+
+This generates a 384-dimension embedding from stored event text and writes it to Qdrant. Batch
+embedding returns per-event success/failure results so individual failures are surfaced cleanly
+instead of aborting the whole run.
+
 `POST /analysis/events/{event_id}/run`
 
 For now, analysis results are written back into the existing `event_symbol_impacts` rows so the

@@ -44,36 +44,11 @@ def upsert_event_embedding(event_id: str, payload: EventEmbeddingUpsertPayload) 
     if len(payload.embedding) != VECTOR_SIZE:
         raise ValueError(f"Embedding length must be exactly {VECTOR_SIZE} for the current collection.")
 
-    settings = get_settings()
-    ensure_event_embedding_collection()
-
-    with connect(settings.database_url, row_factory=dict_row) as connection:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                select
-                  id::text as event_id,
-                  title,
-                  summary,
-                  source_id::text as source_id,
-                  source_id,
-                  canonical_url,
-                  published_at,
-                  region,
-                  country,
-                  location_lat,
-                  location_lng
-                from news_events
-                where id::text = %s
-                limit 1
-                """,
-                (event_id,),
-            )
-            event_row = cursor.fetchone()
-
+    event_row = get_event_embedding_record(event_id)
     if not event_row:
         raise ValueError(f"Event not found: {event_id}")
 
+    ensure_event_embedding_collection()
     point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{event_id}:{payload.content_type}"))
     source_text = payload.source_text or event_row["summary"] or event_row["title"]
 
@@ -109,3 +84,49 @@ def upsert_event_embedding(event_id: str, payload: EventEmbeddingUpsertPayload) 
         content_type=payload.content_type,
         status="upserted",
     )
+
+
+def get_event_embedding_record(event_id: str) -> dict | None:
+    settings = get_settings()
+
+    with connect(settings.database_url, row_factory=dict_row) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select
+                  id::text as event_id,
+                  title,
+                  summary,
+                  raw_content,
+                  canonical_url,
+                  published_at,
+                  region,
+                  country,
+                  location_lat,
+                  location_lng
+                from news_events
+                where id::text = %s
+                limit 1
+                """,
+                (event_id,),
+            )
+            return cursor.fetchone()
+
+
+def list_recent_event_ids(limit: int = 10) -> list[str]:
+    settings = get_settings()
+
+    with connect(settings.database_url, row_factory=dict_row) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                select id::text as event_id
+                from news_events
+                order by published_at desc
+                limit %s
+                """,
+                (limit,),
+            )
+            rows = cursor.fetchall()
+
+    return [row["event_id"] for row in rows]
