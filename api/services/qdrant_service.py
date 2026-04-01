@@ -27,12 +27,23 @@ def get_qdrant_client() -> QdrantClient:
 def ensure_event_embedding_collection() -> None:
     client = get_qdrant_client()
     collections = client.get_collections().collections
-    if any(collection.name == COLLECTION_NAME for collection in collections):
-        return
+    if not any(collection.name == COLLECTION_NAME for collection in collections):
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=qdrant_models.VectorParams(size=VECTOR_SIZE, distance=DISTANCE),
+        )
 
-    client.create_collection(
+    client.create_payload_index(
         collection_name=COLLECTION_NAME,
-        vectors_config=qdrant_models.VectorParams(size=VECTOR_SIZE, distance=DISTANCE),
+        field_name="content_type",
+        field_schema=qdrant_models.PayloadSchemaType.KEYWORD,
+        wait=True,
+    )
+    client.create_payload_index(
+        collection_name=COLLECTION_NAME,
+        field_name="event_id",
+        field_schema=qdrant_models.PayloadSchemaType.KEYWORD,
+        wait=True,
     )
 
 
