@@ -83,6 +83,21 @@ type AnalysisRunPayload =
   | { ok: true; provider: string; model: string; event_id: string; impacts: Array<unknown>; provider_status: string; error?: string | null }
   | { ok: false; error: string };
 
+type OperatorAction = "rss" | "gdelt" | "embed" | "refresh";
+
+type OperatorPayload =
+  | {
+      ok: true;
+      run_id?: string;
+      status?: string;
+      inserted?: number;
+      duplicates?: number;
+      failed?: number;
+      processed?: number;
+      embedded?: number;
+    }
+  | { ok: false; error: string };
+
 function hasCoordinates(event: MockEvent): event is MockEvent & { lat: number; lng: number } {
   return typeof event.lat === "number" && typeof event.lng === "number";
 }
@@ -111,28 +126,37 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [linkedSymbolsLoading, setLinkedSymbolsLoading] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [operatorRunning, setOperatorRunning] = useState<OperatorAction | null>(null);
+  const [operatorMessage, setOperatorMessage] = useState<string | null>(null);
+  const [operatorError, setOperatorError] = useState<string | null>(null);
   const [globeViewport, setGlobeViewport] = useState<GlobeViewport>({
     width: 900,
     height: 720,
   });
+
+  async function loadEventsFromApi() {
+    const response = await fetch("/api/events", { cache: "no-store" });
+    const payload = (await response.json()) as
+      | { ok: true; events: MockEvent[] }
+      | { ok: false; error: string };
+
+    if (!response.ok || !payload.ok) {
+      throw new Error("error" in payload ? payload.error : "Failed to load events.");
+    }
+
+    setEvents(payload.events);
+    setEventsError(null);
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadEvents() {
       try {
-        const response = await fetch("/api/events", { cache: "no-store" });
-        const payload = (await response.json()) as
-          | { ok: true; events: MockEvent[] }
-          | { ok: false; error: string };
-
-        if (!response.ok || !payload.ok) {
-          throw new Error("error" in payload ? payload.error : "Failed to load events.");
-        }
+        await loadEventsFromApi();
 
         if (!cancelled) {
-          setEvents(payload.events);
-          setEventsError(null);
+          setOperatorError(null);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to load events.";
@@ -327,6 +351,59 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     setSourceFilter("All");
   };
 
+  const runOperatorAction = async (action: OperatorAction) => {
+    if (action === "refresh") {
+      try {
+        setOperatorRunning(action);
+        setOperatorMessage(null);
+        setOperatorError(null);
+        await loadEventsFromApi();
+        setOperatorMessage("Event feed refreshed from the DB-backed API.");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to refresh events.";
+        setOperatorError(message);
+      } finally {
+        setOperatorRunning(null);
+      }
+      return;
+    }
+
+    const routeByAction: Record<Exclude<OperatorAction, "refresh">, string> = {
+      rss: "/api/operations/rss",
+      gdelt: "/api/operations/gdelt",
+      embed: "/api/operations/embed",
+    };
+
+    try {
+      setOperatorRunning(action);
+      setOperatorMessage(null);
+      setOperatorError(null);
+
+      const response = await fetch(routeByAction[action], { method: "POST" });
+      const payload = (await response.json()) as OperatorPayload;
+
+      if (!response.ok || !payload.ok) {
+        throw new Error("error" in payload ? payload.error : "Operator action failed.");
+      }
+
+      if (action === "rss" || action === "gdelt") {
+        await loadEventsFromApi();
+        setOperatorMessage(
+          `${action.toUpperCase()} run complete. inserted=${payload.inserted ?? 0}, duplicates=${payload.duplicates ?? 0}, failed=${payload.failed ?? 0}`,
+        );
+      } else {
+        setOperatorMessage(
+          `Embedding run complete. processed=${payload.processed ?? 0}, embedded=${payload.embedded ?? 0}, failed=${payload.failed ?? 0}`,
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operator action failed.";
+      setOperatorError(message);
+    } finally {
+      setOperatorRunning(null);
+    }
+  };
+
   const runAnalysis = async () => {
     if (!selectedEvent?.dbId) {
       setAnalysisError("This event is not stored yet, so analysis cannot run.");
@@ -479,6 +556,64 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
           <button type="button" className="filter-reset" onClick={resetFilters}>
             Reset Filters
           </button>
+        </section>
+
+        <section className="operator-strip" aria-label="Manual operator controls">
+          <div className="operator-head">
+            <div>
+              <p className="section-label">Operator Controls</p>
+              <h2>Manual Workflow</h2>
+            </div>
+            <span className="status-badge">
+              {operatorRunning ? `Running ${operatorRunning}` : "Idle"}
+            </span>
+          </div>
+          <div className="operator-actions">
+            <button
+              type="button"
+              className="action-button"
+              disabled={operatorRunning !== null}
+              onClick={() => void runOperatorAction("rss")}
+            >
+              {operatorRunning === "rss" ? "Running RSS..." : "Run RSS Ingest"}
+            </button>
+            <button
+              type="button"
+              className="action-button"
+              disabled={operatorRunning !== null}
+              onClick={() => void runOperatorAction("gdelt")}
+            >
+              {operatorRunning === "gdelt" ? "Running GDELT..." : "Run GDELT Ingest"}
+            </button>
+            <button
+              type="button"
+              className="action-button"
+              disabled={operatorRunning !== null}
+              onClick={() => void runOperatorAction("embed")}
+            >
+              {operatorRunning === "embed" ? "Embedding..." : "Embed Recent"}
+            </button>
+            <button
+              type="button"
+              className="action-button"
+              disabled={operatorRunning !== null}
+              onClick={() => void runOperatorAction("refresh")}
+            >
+              {operatorRunning === "refresh" ? "Refreshing..." : "Refresh Events"}
+            </button>
+          </div>
+          {operatorMessage ? (
+            <div className="operator-note">
+              <strong>Last result</strong>
+              <span>{operatorMessage}</span>
+            </div>
+          ) : null}
+          {operatorError ? (
+            <div className="operator-note operator-note-warning">
+              <strong>Operator error</strong>
+              <span>{operatorError}</span>
+            </div>
+          ) : null}
         </section>
 
         <div className="map-frame">

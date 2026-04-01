@@ -162,6 +162,58 @@ a {
   margin-bottom: 10px;
 }
 
+.operator-strip {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 10px;
+  border: 1px solid rgba(151, 223, 255, 0.16);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background:
+    linear-gradient(180deg, rgba(12, 25, 33, 0.92), rgba(7, 18, 24, 0.96)),
+    radial-gradient(circle at top left, rgba(107, 201, 232, 0.08), transparent 55%);
+}
+
+.operator-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.operator-head h2 {
+  margin: 2px 0 0;
+  font-size: 1rem;
+}
+
+.operator-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.operator-note {
+  display: grid;
+  gap: 4px;
+  border: 1px dashed rgba(151, 223, 255, 0.22);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(7, 16, 21, 0.55);
+  color: var(--muted);
+}
+
+.operator-note strong {
+  color: var(--text);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.operator-note-warning {
+  border-color: rgba(255, 186, 111, 0.32);
+  background: rgba(35, 21, 10, 0.72);
+}
+
 .events-warning {
   display: grid;
   gap: 6px;
@@ -955,6 +1007,11 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .operator-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .command-bar {
     flex-direction: column;
   }
@@ -990,6 +1047,10 @@ h2 {
 
   .filter-strip {
     grid-template-columns: 1fr;
+  }
+
+  .operator-actions {
+    flex-direction: column;
   }
 
   .map-frame {
