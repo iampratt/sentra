@@ -60,6 +60,18 @@ type LinkedPricePayload =
         state: "not_run" | "failed" | "no_impact" | "low_confidence" | "ok";
         impacted_symbols: number;
         low_confidence_symbols: number;
+        supporting_references: Array<{
+          event_id: string;
+          point_id: string;
+          score: number;
+          title: string;
+          summary: string | null;
+          canonical_url: string | null;
+          published_at: string | null;
+          region: string | null;
+          country: string | null;
+          content_type: string;
+        }>;
       };
       symbols: LinkedPriceSymbol[];
     }
@@ -890,6 +902,30 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                           {symbol.error ? <span className="event-meta event-meta-warning">{symbol.error}</span> : null}
                         </article>
                       ))}
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading &&
+                  !linkedSymbolsError &&
+                  latestAnalysis &&
+                  latestAnalysis.supporting_references.length > 0 ? (
+                    <div className="stock-impact-empty">
+                      <strong>Historical context used in the latest analysis.</strong>
+                      <div className="stock-impact-list">
+                        {latestAnalysis.supporting_references.slice(0, 3).map((reference) => (
+                          <article key={`${reference.event_id}-${reference.point_id}`} className="stock-impact-card">
+                            <div className="stock-impact-head">
+                              <strong>{reference.title}</strong>
+                              <span className="tag-pill">{reference.score.toFixed(3)}</span>
+                            </div>
+                            <div className="tag-row">
+                              {reference.region ? <span className="tag-pill">{reference.region}</span> : null}
+                              {reference.country ? <span className="tag-pill">{reference.country}</span> : null}
+                              <span className="tag-pill">{reference.content_type}</span>
+                            </div>
+                            {reference.summary ? <span className="event-meta">{reference.summary}</span> : null}
+                          </article>
+                        ))}
+                      </div>
                     </div>
                   ) : null}
                 </div>

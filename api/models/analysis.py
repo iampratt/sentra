@@ -16,6 +16,19 @@ class AnalysisCandidateSymbol(BaseModel):
     company_name: str
 
 
+class AnalysisContextEvent(BaseModel):
+    event_id: str
+    point_id: str
+    title: str
+    summary: str | None = None
+    canonical_url: str | None = None
+    region: str | None = None
+    country: str | None = None
+    published_at: str | None = None
+    content_type: str
+    score: float
+
+
 class AnalysisEventPayload(BaseModel):
     event_id: str
     title: str
@@ -24,6 +37,7 @@ class AnalysisEventPayload(BaseModel):
     region: str | None = None
     country: str | None = None
     linked_symbols: list[AnalysisCandidateSymbol] = Field(default_factory=list)
+    related_events: list[AnalysisContextEvent] = Field(default_factory=list)
 
 
 class SymbolImpactAnalysis(BaseModel):
@@ -45,5 +59,6 @@ class AnalysisRunResult(BaseModel):
     analysis_run_id: str | None = None
     analysis_version: int | None = None
     impacts: list[SymbolImpactAnalysis]
+    related_events_used: list[AnalysisContextEvent] = Field(default_factory=list)
     provider_status: str
     error: str | None = None

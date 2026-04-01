@@ -2,8 +2,9 @@ from psycopg import connect
 from psycopg.rows import dict_row
 
 from api.config import get_settings
-from api.models.analysis import AnalysisCandidateSymbol, AnalysisEventPayload, AnalysisRunResult
+from api.models.analysis import AnalysisCandidateSymbol, AnalysisContextEvent, AnalysisEventPayload, AnalysisRunResult
 from api.services.analysis_provider import get_analysis_provider
+from api.services.qdrant_service import get_related_events
 
 
 def run_event_analysis(event_id: str) -> AnalysisRunResult:
@@ -65,7 +66,28 @@ def run_event_analysis(event_id: str) -> AnalysisRunResult:
                     )
                     for row in symbol_rows
                 ],
+                related_events=[],
             )
+
+            try:
+                related_response = get_related_events(event_id=event_id, content_type="summary", limit=5)
+                payload.related_events = [
+                    AnalysisContextEvent(
+                        event_id=item.event_id,
+                        point_id=item.point_id,
+                        title=item.title,
+                        summary=item.summary,
+                        canonical_url=item.canonical_url,
+                        region=item.region,
+                        country=item.country,
+                        published_at=item.published_at,
+                        content_type=item.content_type,
+                        score=item.score,
+                    )
+                    for item in related_response.related_events
+                ]
+            except Exception:
+                payload.related_events = []
 
             provider = get_analysis_provider()
             result = provider.analyze_event(payload)
@@ -121,6 +143,63 @@ def run_event_analysis(event_id: str) -> AnalysisRunResult:
             analysis_run_id = analysis_run_row["analysis_run_id"] if analysis_run_row else None
 
             symbol_id_map = {(row["ticker"], row["exchange"]): row["symbol_id"] for row in symbol_rows}
+
+            for related_event in result.related_events_used:
+                if not analysis_run_id:
+                    continue
+
+                cursor.execute(
+                    """
+                    insert into analysis_related_events (
+                      analysis_run_id,
+                      related_event_id,
+                      point_id,
+                      content_type,
+                      score,
+                      title,
+                      summary,
+                      canonical_url,
+                      published_at,
+                      region,
+                      country,
+                      created_at
+                    )
+                    select
+                      %s,
+                      e.id,
+                      %s,
+                      %s,
+                      %s,
+                      %s,
+                      %s,
+                      e.canonical_url,
+                      e.published_at,
+                      %s,
+                      %s,
+                      now()
+                    from news_events e
+                    where e.id::text = %s
+                    on conflict (analysis_run_id, related_event_id, content_type) do update
+                    set score = excluded.score,
+                        title = excluded.title,
+                        summary = excluded.summary,
+                        canonical_url = excluded.canonical_url,
+                        published_at = excluded.published_at,
+                        region = excluded.region,
+                        country = excluded.country
+                    """,
+                    (
+                        analysis_run_id,
+                        related_event.point_id,
+                        related_event.content_type,
+                        related_event.score,
+                        related_event.title,
+                        related_event.summary,
+                        related_event.region,
+                        related_event.country,
+                        related_event.event_id,
+                    ),
+                )
 
             for impact in result.impacts:
                 symbol_id = symbol_id_map.get((impact.ticker, impact.exchange))

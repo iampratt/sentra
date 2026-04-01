@@ -5,7 +5,7 @@ from psycopg import connect
 from psycopg.rows import dict_row
 
 from api.config import get_settings
-from api.models.stock import EventPriceContextResult, LatestAnalysisSummary, StockPriceContext
+from api.models.stock import AnalysisReference, EventPriceContextResult, LatestAnalysisSummary, StockPriceContext
 
 YAHOO_SUFFIX_BY_EXCHANGE: dict[str, str] = {
     "ASX": ".AX",
@@ -261,6 +261,44 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
             )
             latest_analysis_row = cursor.fetchone()
 
+            supporting_references: list[AnalysisReference] = []
+            if latest_analysis_row:
+                cursor.execute(
+                    """
+                    select
+                      are.related_event_id::text as event_id,
+                      are.point_id,
+                      are.score,
+                      are.title,
+                      are.summary,
+                      are.canonical_url,
+                      are.published_at::text as published_at,
+                      are.region,
+                      are.country,
+                      are.content_type
+                    from analysis_related_events are
+                    where are.analysis_run_id::text = %s
+                    order by are.score desc, are.created_at asc
+                    """,
+                    (latest_analysis_row["analysis_run_id"],),
+                )
+                reference_rows = cursor.fetchall()
+                supporting_references = [
+                    AnalysisReference(
+                        event_id=row["event_id"],
+                        point_id=row["point_id"],
+                        score=float(row["score"]),
+                        title=row["title"],
+                        summary=row["summary"],
+                        canonical_url=row["canonical_url"],
+                        published_at=row["published_at"],
+                        region=row["region"],
+                        country=row["country"],
+                        content_type=row["content_type"],
+                    )
+                    for row in reference_rows
+                ]
+
             cursor.execute(
                 """
                 select
@@ -374,6 +412,7 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
             state=state,
             impacted_symbols=impacted_symbols,
             low_confidence_symbols=low_confidence_symbols,
+            supporting_references=supporting_references,
         )
 
     return EventPriceContextResult(

@@ -33,7 +33,8 @@ class GroqAnalysisProvider(AnalysisProvider):
             "task": (
                 "Return strict JSON with key 'impacts'. Each impact must include ticker, exchange, market, "
                 "sentiment(Bullish|Bearish|Neutral), direction(Up|Down|Mixed), magnitude(Low|Medium|High), "
-                "confidence(0..1), time_horizon(intraday|1-3d|3-7d|1-2w), rationale."
+                "confidence(0..1), time_horizon(intraday|1-3d|3-7d|1-2w), rationale. "
+                "Use related_events as historical context when relevant, but do not mention events that are unrelated."
             ),
         }
 
@@ -56,6 +57,7 @@ class GroqAnalysisProvider(AnalysisProvider):
             model=self.model,
             event_id=payload.event_id,
             impacts=impacts,
+            related_events_used=payload.related_events,
             provider_status="ok",
         )
 
@@ -67,6 +69,7 @@ class StubAnalysisProvider(AnalysisProvider):
             model="local-stub",
             event_id=payload.event_id,
             impacts=[],
+            related_events_used=payload.related_events,
             provider_status="stubbed",
             error="No analysis provider configured.",
         )

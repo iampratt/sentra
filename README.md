@@ -271,6 +271,20 @@ It looks up the stored embedding for one event, searches Qdrant for similar even
 event itself from the results, and returns related historical items with similarity scores. This is
 retrieval only; it does not feed the analysis prompt yet.
 
+## RAG-enhanced analysis
+
+Part 34 feeds related historical events into the analysis prompt and persists the supporting
+references used by the latest run.
+
+Apply the migration:
+
+```bash
+pnpm db:migrate:analysis-related
+```
+
+The latest stock/analysis read path now includes supporting references so the dashboard can show
+why an impact prediction was made, before the dedicated related-events UI lands in Part 35.
+
 `POST /analysis/events/{event_id}/run`
 
 For now, analysis results are written back into the existing `event_symbol_impacts` rows so the
