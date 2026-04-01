@@ -91,6 +91,10 @@ function formatCoordinate(value: number | null) {
   return typeof value === "number" ? value.toFixed(4) : "N/A";
 }
 
+function formatRelatedScore(score: number) {
+  return score.toFixed(3);
+}
+
 export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const [events, setEvents] = useState<MockEvent[]>(mockEvents);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -904,28 +908,64 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       ))}
                     </div>
                   ) : null}
-                  {!linkedSymbolsLoading &&
-                  !linkedSymbolsError &&
-                  latestAnalysis &&
-                  latestAnalysis.supporting_references.length > 0 ? (
+                </div>
+                <div className="detail-block">
+                  <div className="detail-section-head">
+                    <p className="detail-label">Related Historical Events</p>
+                    {latestAnalysis?.supporting_references?.length ? (
+                      <span className="status-badge">{latestAnalysis.supporting_references.length} Linked</span>
+                    ) : null}
+                  </div>
+                  {!latestAnalysis || latestAnalysis.state === "not_run" ? (
                     <div className="stock-impact-empty">
-                      <strong>Historical context used in the latest analysis.</strong>
-                      <div className="stock-impact-list">
-                        {latestAnalysis.supporting_references.slice(0, 3).map((reference) => (
-                          <article key={`${reference.event_id}-${reference.point_id}`} className="stock-impact-card">
-                            <div className="stock-impact-head">
+                      <strong>No historical context loaded yet.</strong>
+                      <span>Run analysis on this event to retrieve and persist related historical references.</span>
+                    </div>
+                  ) : null}
+                  {latestAnalysis &&
+                  latestAnalysis.state !== "not_run" &&
+                  latestAnalysis.supporting_references.length === 0 ? (
+                    <div className="stock-impact-empty">
+                      <strong>No related events were attached to the latest analysis.</strong>
+                      <span>The retrieval step returned no usable historical matches for this event.</span>
+                    </div>
+                  ) : null}
+                  {latestAnalysis && latestAnalysis.supporting_references.length > 0 ? (
+                    <div className="related-events-list">
+                      {latestAnalysis.supporting_references.map((reference, index) => (
+                        <article key={`${reference.event_id}-${reference.point_id}`} className="related-event-card">
+                          <div className="related-event-rank">
+                            <span>#{index + 1}</span>
+                          </div>
+                          <div className="related-event-body">
+                            <div className="related-event-head">
                               <strong>{reference.title}</strong>
-                              <span className="tag-pill">{reference.score.toFixed(3)}</span>
+                              <span className="tag-pill">Score {formatRelatedScore(reference.score)}</span>
                             </div>
                             <div className="tag-row">
                               {reference.region ? <span className="tag-pill">{reference.region}</span> : null}
                               {reference.country ? <span className="tag-pill">{reference.country}</span> : null}
                               <span className="tag-pill">{reference.content_type}</span>
+                              {reference.published_at ? <span className="tag-pill">{reference.published_at}</span> : null}
                             </div>
-                            {reference.summary ? <span className="event-meta">{reference.summary}</span> : null}
-                          </article>
-                        ))}
-                      </div>
+                            {reference.summary ? (
+                              <p className="drawer-copy related-event-summary">{reference.summary}</p>
+                            ) : (
+                              <span className="event-meta">No summary stored for this reference.</span>
+                            )}
+                            {reference.canonical_url ? (
+                              <a
+                                className="related-event-link"
+                                href={reference.canonical_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Open source article
+                              </a>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   ) : null}
                 </div>
