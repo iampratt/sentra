@@ -239,6 +239,16 @@ Each event analysis now creates:
 Only the latest active run is read back into the dashboard, so rerunning analysis creates history
 without overwriting older analysis results.
 
+## Vector DB integration
+
+Part 31 adds Qdrant collection scaffolding and a manual event-vector upsert path:
+
+- `GET /vectors/health`
+- `POST /vectors/events/{event_id}/upsert`
+
+This part creates or verifies the `news_event_embeddings` collection and lets you write an
+embedding for a stored event, but it does not generate embeddings automatically yet.
+
 `POST /analysis/events/{event_id}/run`
 
 For now, analysis results are written back into the existing `event_symbol_impacts` rows so the
