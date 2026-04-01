@@ -261,6 +261,16 @@ This generates a 384-dimension embedding from stored event text and writes it to
 embedding returns per-event success/failure results so individual failures are surfaced cleanly
 instead of aborting the whole run.
 
+## Related-event retrieval
+
+Part 33 adds the first retrieval endpoint:
+
+- `GET /vectors/events/{event_id}/related?content_type=summary&limit=5`
+
+It looks up the stored embedding for one event, searches Qdrant for similar events, excludes the
+event itself from the results, and returns related historical items with similarity scores. This is
+retrieval only; it does not feed the analysis prompt yet.
+
 `POST /analysis/events/{event_id}/run`
 
 For now, analysis results are written back into the existing `event_symbol_impacts` rows so the

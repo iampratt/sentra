@@ -52,6 +52,26 @@ class BatchEventEmbeddingResult(BaseModel):
     results: list[BatchEventEmbeddingItemResult]
 
 
+class RelatedEventResult(BaseModel):
+    event_id: str
+    point_id: str
+    score: float
+    title: str
+    summary: str | None = None
+    canonical_url: str | None = None
+    published_at: str | None = None
+    region: str | None = None
+    country: str | None = None
+    content_type: str
+
+
+class RelatedEventsResponse(BaseModel):
+    event_id: str
+    content_type: str
+    limit: int
+    related_events: list[RelatedEventResult]
+
+
 class VectorHealthResult(BaseModel):
     ok: bool
     collection: str

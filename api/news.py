@@ -17,6 +17,7 @@ from api.models.vector import (
     EventEmbeddingGenerateResult,
     EventEmbeddingUpsertPayload,
     EventEmbeddingUpsertResult,
+    RelatedEventsResponse,
     VectorHealthResult,
 )
 from api.services.gdelt_ingester import ingest_gdelt_events
@@ -25,7 +26,7 @@ from api.services.analysis_service import run_event_analysis
 from api.services.embedding_service import embed_event, embed_recent_events
 from api.services.ingestion_runs import list_recent_ingestion_runs, log_gdelt_ingestion_run, log_rss_ingestion_run
 from api.services.news_ingester import ingest_manual_event, normalize_payload
-from api.services.qdrant_service import get_vector_health, upsert_event_embedding
+from api.services.qdrant_service import get_related_events, get_vector_health, upsert_event_embedding
 from api.services.rss_ingester import ingest_rss_feeds
 from api.services.stock_service import get_event_price_context
 
@@ -98,6 +99,20 @@ async def embed_vectors_for_recent_events(
         return embed_recent_events(limit=limit, payload=payload)
     except Exception as error:
         raise HTTPException(status_code=502, detail=f"Batch embedding failed: {error}") from error
+
+
+@router.get("/vectors/events/{event_id}/related", response_model=RelatedEventsResponse)
+async def get_related_vectors_for_event(
+    event_id: str,
+    content_type: str = "summary",
+    limit: int = 5,
+) -> RelatedEventsResponse:
+    try:
+        return get_related_events(event_id=event_id, content_type=content_type, limit=limit)
+    except IndexError as error:
+        raise HTTPException(status_code=404, detail=f"No stored embedding found for event {event_id}.") from error
+    except Exception as error:
+        raise HTTPException(status_code=502, detail=f"Related-event retrieval failed: {error}") from error
 
 
 @router.post("/analysis/providers/test", response_model=AnalysisRunResult)

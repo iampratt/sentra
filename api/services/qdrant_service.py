@@ -6,7 +6,13 @@ from psycopg import connect
 from psycopg.rows import dict_row
 
 from api.config import get_settings
-from api.models.vector import EventEmbeddingUpsertPayload, EventEmbeddingUpsertResult, VectorHealthResult
+from api.models.vector import (
+    EventEmbeddingUpsertPayload,
+    EventEmbeddingUpsertResult,
+    RelatedEventResult,
+    RelatedEventsResponse,
+    VectorHealthResult,
+)
 
 COLLECTION_NAME = "news_event_embeddings"
 VECTOR_SIZE = 384
@@ -130,3 +136,59 @@ def list_recent_event_ids(limit: int = 10) -> list[str]:
             rows = cursor.fetchall()
 
     return [row["event_id"] for row in rows]
+
+
+def get_related_events(event_id: str, content_type: str = "summary", limit: int = 5) -> RelatedEventsResponse:
+    ensure_event_embedding_collection()
+    point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, f"{event_id}:{content_type}"))
+    client = get_qdrant_client()
+
+    search_results = client.search(
+        collection_name=COLLECTION_NAME,
+        query_filter=qdrant_models.Filter(
+            must=[
+                qdrant_models.FieldCondition(
+                    key="content_type",
+                    match=qdrant_models.MatchValue(value=content_type),
+                )
+            ],
+            must_not=[
+                qdrant_models.FieldCondition(
+                    key="event_id",
+                    match=qdrant_models.MatchValue(value=event_id),
+                )
+            ],
+        ),
+        query_vector=client.retrieve(
+            collection_name=COLLECTION_NAME,
+            ids=[point_id],
+            with_vectors=True,
+        )[0].vector,
+        with_payload=True,
+        limit=limit,
+    )
+
+    related_events: list[RelatedEventResult] = []
+    for item in search_results:
+        payload = item.payload or {}
+        related_events.append(
+            RelatedEventResult(
+                event_id=str(payload.get("event_id", "")),
+                point_id=str(item.id),
+                score=float(item.score),
+                title=str(payload.get("title", "Untitled event")),
+                summary=payload.get("summary"),
+                canonical_url=payload.get("canonical_url"),
+                published_at=payload.get("published_at"),
+                region=payload.get("region"),
+                country=payload.get("country"),
+                content_type=str(payload.get("content_type", content_type)),
+            )
+        )
+
+    return RelatedEventsResponse(
+        event_id=event_id,
+        content_type=content_type,
+        limit=limit,
+        related_events=related_events,
+    )
