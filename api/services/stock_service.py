@@ -5,7 +5,7 @@ from psycopg import connect
 from psycopg.rows import dict_row
 
 from api.config import get_settings
-from api.models.stock import EventPriceContextResult, StockPriceContext
+from api.models.stock import EventPriceContextResult, LatestAnalysisSummary, StockPriceContext
 
 YAHOO_SUFFIX_BY_EXCHANGE: dict[str, str] = {
     "ASX": ".AX",
@@ -16,6 +16,7 @@ YAHOO_SUFFIX_BY_EXCHANGE: dict[str, str] = {
 }
 CACHE_TTL_MINUTES = 30
 ERROR_CACHE_TTL_MINUTES = 5
+LOW_CONFIDENCE_THRESHOLD = 0.6
 
 
 def _provider_symbol(ticker: str, exchange: str) -> str:
@@ -244,11 +245,30 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
             cursor.execute(
                 """
                 select
+                  id::text as analysis_run_id,
+                  analysis_version,
+                  provider,
+                  model,
+                  provider_status,
+                  error
+                from analysis_runs
+                where event_id::text = %s
+                  and is_active = true
+                order by analysis_version desc, created_at desc
+                limit 1
+                """,
+                (event_id,),
+            )
+            latest_analysis_row = cursor.fetchone()
+
+            cursor.execute(
+                """
+                select
                   s.ticker,
                   s.exchange,
                   s.market,
                   s.currency,
-                  air.analysis_version,
+                  %s::integer as analysis_version,
                   ai.sentiment,
                   ai.direction,
                   ai.magnitude,
@@ -257,21 +277,17 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
                   ai.rationale
                 from event_symbol_impacts esi
                 inner join symbols s on s.id = esi.symbol_id
-                left join (
-                  select id, event_id, analysis_version
-                  from analysis_runs
-                  where event_id::text = %s
-                    and is_active = true
-                  order by analysis_version desc, created_at desc
-                  limit 1
-                ) air on air.event_id = esi.event_id
                 left join analysis_impacts ai
-                  on ai.analysis_run_id = air.id
+                  on ai.analysis_run_id = %s::uuid
                  and ai.symbol_id = s.id
                 where esi.event_id::text = %s
                 order by s.market asc, s.exchange asc, s.ticker asc
                 """,
-                (event_id, event_id),
+                (
+                    latest_analysis_row["analysis_version"] if latest_analysis_row else None,
+                    latest_analysis_row["analysis_run_id"] if latest_analysis_row else None,
+                    event_id,
+                ),
             )
             rows = cursor.fetchall()
 
@@ -324,7 +340,44 @@ def get_event_price_context(event_id: str) -> EventPriceContextResult:
 
         connection.commit()
 
+    impacted_symbols = sum(1 for symbol in symbols if symbol.direction is not None)
+    low_confidence_symbols = sum(
+        1
+        for symbol in symbols
+        if symbol.confidence is not None and symbol.confidence < LOW_CONFIDENCE_THRESHOLD
+    )
+
+    if latest_analysis_row is None:
+        latest_analysis = LatestAnalysisSummary(
+            state="not_run",
+            impacted_symbols=impacted_symbols,
+            low_confidence_symbols=low_confidence_symbols,
+        )
+    else:
+        provider_status = latest_analysis_row["provider_status"]
+        if provider_status != "ok":
+            state = "failed"
+        elif impacted_symbols == 0:
+            state = "no_impact"
+        elif impacted_symbols > 0 and impacted_symbols == low_confidence_symbols:
+            state = "low_confidence"
+        else:
+            state = "ok"
+
+        latest_analysis = LatestAnalysisSummary(
+            analysis_run_id=latest_analysis_row["analysis_run_id"],
+            analysis_version=int(latest_analysis_row["analysis_version"]),
+            provider=latest_analysis_row["provider"],
+            model=latest_analysis_row["model"],
+            provider_status=provider_status,
+            error=latest_analysis_row["error"],
+            state=state,
+            impacted_symbols=impacted_symbols,
+            low_confidence_symbols=low_confidence_symbols,
+        )
+
     return EventPriceContextResult(
         event_id=event_id,
+        latest_analysis=latest_analysis,
         symbols=symbols,
     )

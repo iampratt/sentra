@@ -47,8 +47,25 @@ type LinkedPriceSymbol = {
 };
 
 type LinkedPricePayload =
-  | { ok: true; event_id: string; symbols: LinkedPriceSymbol[] }
+  | {
+      ok: true;
+      event_id: string;
+      latest_analysis: {
+        analysis_run_id: string | null;
+        analysis_version: number | null;
+        provider: string | null;
+        model: string | null;
+        provider_status: string | null;
+        error: string | null;
+        state: "not_run" | "failed" | "no_impact" | "low_confidence" | "ok";
+        impacted_symbols: number;
+        low_confidence_symbols: number;
+      };
+      symbols: LinkedPriceSymbol[];
+    }
   | { ok: false; error: string };
+
+type LatestAnalysisSummary = Extract<LinkedPricePayload, { ok: true }>["latest_analysis"];
 
 type AnalysisRunPayload =
   | { ok: true; provider: string; model: string; event_id: string; impacts: Array<unknown>; provider_status: string; error?: string | null }
@@ -73,6 +90,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
   const globeContainerRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<any>(null);
   const [linkedSymbols, setLinkedSymbols] = useState<LinkedPriceSymbol[]>([]);
+  const [latestAnalysis, setLatestAnalysis] = useState<LatestAnalysisSummary | null>(null);
   const [linkedSymbolsError, setLinkedSymbolsError] = useState<string | null>(null);
   const [linkedSymbolsLoading, setLinkedSymbolsLoading] = useState(false);
   const [analysisRunning, setAnalysisRunning] = useState(false);
@@ -245,6 +263,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
     async function loadLinkedSymbols() {
       if (!selectedEvent?.dbId) {
         setLinkedSymbols([]);
+        setLatestAnalysis(null);
         setLinkedSymbolsError(null);
         setLinkedSymbolsLoading(false);
         return;
@@ -261,6 +280,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
         if (!cancelled) {
           setLinkedSymbols(payload.symbols);
+          setLatestAnalysis(payload.latest_analysis);
           setLinkedSymbolsError(null);
         }
       } catch (error) {
@@ -268,6 +288,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
         if (!cancelled) {
           setLinkedSymbols([]);
+          setLatestAnalysis(null);
           setLinkedSymbolsError(message);
         }
       } finally {
@@ -314,6 +335,7 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
 
       if (refreshed.ok && refreshedPayload.ok) {
         setLinkedSymbols(refreshedPayload.symbols);
+        setLatestAnalysis(refreshedPayload.latest_analysis);
         setLinkedSymbolsError(null);
       }
     } catch (error) {
@@ -773,6 +795,44 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                       <span>Run the event-symbol linker first, then reload this event.</span>
                     </div>
                   ) : null}
+                  {!linkedSymbolsLoading &&
+                  !linkedSymbolsError &&
+                  linkedSymbols.length > 0 &&
+                  latestAnalysis?.state === "not_run" ? (
+                    <div className="stock-impact-empty">
+                      <strong>Analysis has not been run for this event yet.</strong>
+                      <span>Use Run Analysis to create the first persisted signal set for these linked symbols.</span>
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading &&
+                  !linkedSymbolsError &&
+                  linkedSymbols.length > 0 &&
+                  latestAnalysis?.state === "failed" ? (
+                    <div className="stock-impact-empty stock-impact-empty-warning">
+                      <strong>Latest analysis failed.</strong>
+                      <span>{latestAnalysis.error ?? "The provider did not return a usable analysis result."}</span>
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading &&
+                  !linkedSymbolsError &&
+                  linkedSymbols.length > 0 &&
+                  latestAnalysis?.state === "no_impact" ? (
+                    <div className="stock-impact-empty">
+                      <strong>No impact found in the latest analysis run.</strong>
+                      <span>The provider completed successfully but did not assign a directional impact to the linked symbols.</span>
+                    </div>
+                  ) : null}
+                  {!linkedSymbolsLoading &&
+                  !linkedSymbolsError &&
+                  linkedSymbols.length > 0 &&
+                  latestAnalysis?.state === "low_confidence" ? (
+                    <div className="stock-impact-empty stock-impact-empty-warning">
+                      <strong>Latest analysis is low confidence.</strong>
+                      <span>
+                        {latestAnalysis.low_confidence_symbols} of {latestAnalysis.impacted_symbols} impacted symbols are below the confidence threshold.
+                      </span>
+                    </div>
+                  ) : null}
                   {!linkedSymbolsLoading && !linkedSymbolsError && linkedSymbols.length > 0 ? (
                     <div className="stock-impact-list">
                       {linkedSymbols.map((symbol) => (
@@ -789,6 +849,12 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                             <div className="stock-impact-stat">
                               <span>Signal</span>
                               <strong>{symbol.direction ?? "Not analyzed"}</strong>
+                            </div>
+                            <div className="stock-impact-stat">
+                              <span>Confidence</span>
+                              <strong>
+                                {symbol.confidence !== null ? `${Math.round(symbol.confidence * 100)}%` : "Unavailable"}
+                              </strong>
                             </div>
                             <div className="stock-impact-stat">
                               <span>Last Close</span>
@@ -815,6 +881,9 @@ export function IntelDashboard({ appName, apiBaseUrl }: IntelDashboardProps) {
                             {symbol.time_horizon ? <span className="tag-pill">{symbol.time_horizon}</span> : null}
                             {symbol.analysis_version !== null ? (
                               <span className="tag-pill">v{symbol.analysis_version}</span>
+                            ) : null}
+                            {symbol.confidence !== null && symbol.confidence < 0.6 ? (
+                              <span className="tag-pill tag-pill-warning">Low Confidence</span>
                             ) : null}
                           </div>
                           {symbol.rationale ? <span className="event-meta">{symbol.rationale}</span> : null}

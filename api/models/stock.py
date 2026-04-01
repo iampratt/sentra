@@ -3,6 +3,18 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class LatestAnalysisSummary(BaseModel):
+    analysis_run_id: str | None = None
+    analysis_version: int | None = None
+    provider: str | None = None
+    model: str | None = None
+    provider_status: str | None = None
+    error: str | None = None
+    state: str
+    impacted_symbols: int = 0
+    low_confidence_symbols: int = 0
+
+
 class StockPriceContext(BaseModel):
     ticker: str
     exchange: str
@@ -26,4 +38,5 @@ class StockPriceContext(BaseModel):
 
 class EventPriceContextResult(BaseModel):
     event_id: str
+    latest_analysis: LatestAnalysisSummary
     symbols: list[StockPriceContext]
